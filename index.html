@@ -1148,16 +1148,32 @@ async function dbDelete(sc) {
     const scEnc = encodeURIComponent(sc);
     const res = await fetch(SUPA_URL + '/rest/v1/pedidos?sc=eq.' + scEnc, {
       method: 'DELETE',
-      headers: SUPA_HEADERS
+      headers: {
+        ...SUPA_HEADERS,
+        'Prefer': 'return=representation'
+      }
     });
+
     if (!res.ok) {
       const txt = await res.text();
       console.error('dbDelete HTTP error:', res.status, txt);
       toast('Erro ao excluir no banco: ' + res.status, 'error');
       return false;
     }
-    console.log('dbDelete success for SC:', sc);
+
+    const deletedRows = await res.json();
+
+    if (!deletedRows || deletedRows.length === 0) {
+      console.warn('Nenhuma linha foi excluída no Supabase para SC:', sc);
+      toast('Pedido removido da tela, mas não foi excluído do banco. Verifique a permissão DELETE no Supabase.', 'error');
+      await dbLoad();
+      renderPedidosTable();
+      return false;
+    }
+
+    console.log('dbDelete success for SC:', sc, deletedRows);
     return true;
+
   } catch(e) {
     console.error('dbDelete exception:', e.message);
     toast('Erro de conexão ao excluir — pedido não foi removido do banco', 'error');
