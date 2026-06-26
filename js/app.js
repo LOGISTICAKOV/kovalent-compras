@@ -2975,6 +2975,7 @@ function openModal(sc) {
   document.getElementById('modal-content').innerHTML +=
     '<div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">'
     + (canEdit ? '<button class="btn btn-secondary" onclick="updateStatus(\'' + p.sc + '\')">🔄 Atualizar Status</button>' : window.almoxarifeMode ? '<span style="font-size:12px;color:#a855f7;display:flex;align-items:center;gap:6px">📦 Almoxarife só pode atualizar a partir de Lançar NF</span>' : '<span style="font-size:12px;color:#6b7f96;display:flex;align-items:center;gap:6px">🔒 Apenas compradores podem atualizar o status</span>')
+    + (canEdit ? '<button class="btn btn-secondary" onclick="openStatusInfoEditor(\'' + p.sc + '\')">✏️ Editar/Apagar Etapas</button>' : '')
     + (canReceber ? '<button class="btn btn-primary" onclick="openRecebimentoModal(\'' + p.sc + '\')">📦 Registrar Recebimento</button>' : '')
     + (window.compradorMode ? '<button class="btn btn-secondary" onclick="openEditModal(\'' + p.sc + '\')">Editar</button>' : '')
     + (window.compradorMode ? '<button class="btn btn-danger" onclick="confirmarExclusao(\'' + p.sc + '\')">Excluir</button>' : '')
@@ -3373,4 +3374,268 @@ function renderRecebimentosHistorico(container) {
       + '<td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escapeHTML(r.obs || '')+'">'+escapeHTML(r.obs || '—')+'</td>'
       + '</tr>').join('')
     + '</tbody></table>';
+}
+
+// =========================================================
+// v1.1.4 — EDITAR / APAGAR INFORMAÇÕES DAS ETAPAS
+// =========================================================
+const STATUS_INFO_CONFIG = [
+  { status:'Cotação', role:'compras', fields:[
+    { key:'dataCotacao', label:'Data da Cotação', type:'date' },
+    { key:'fornecedorEsc', label:'Fornecedor Escolhido', type:'text' },
+    { key:'valorCotacao', label:'Valor da 1ª Cotação', type:'number' }
+  ]},
+  { status:'Pedido de Compra', role:'compras', fields:[
+    { key:'dataPedidoCompra', label:'Data do Pedido de Compra', type:'date' },
+    { key:'docPC', label:'Nº Pedido de Compra', type:'text' },
+    { key:'valorPago', label:'Valor Negociado / Pago', type:'number' }
+  ]},
+  { status:'Aguardando Pagamento', role:'compras', fields:[
+    { key:'dataAguardando', label:'Data Aguardando Pagamento', type:'date' },
+    { key:'docFatura', label:'Fatura / Documento de Pagamento', type:'text' }
+  ]},
+  { status:'A Caminho', role:'compras', fields:[
+    { key:'dataACaminho', label:'Data A Caminho', type:'date' },
+    { key:'rastreio', label:'Código de Rastreio', type:'text' },
+    { key:'previsaoEntrega', label:'Previsão de Entrega', type:'date' }
+  ]},
+  { status:'Lançar NF', role:'almox', fields:[
+    { key:'dataLancarNF', label:'Data Lançar NF', type:'date' },
+    { key:'docNFE', label:'NF(s) de Entrada', type:'text' },
+    { key:'dataRecebimento', label:'Data de Recebimento', type:'date' },
+    { key:'recebidoPor', label:'Recebido Por', type:'text' }
+  ]},
+  { status:'Conferência', role:'almox', fields:[
+    { key:'dataConferencia', label:'Data de Conferência', type:'date' }
+  ]},
+  { status:'Aguardando Identificação', role:'almox', fields:[
+    { key:'dataAguardandoId', label:'Data de Identificação', type:'date' }
+  ]},
+  { status:'Amostragem', role:'almox', fields:[
+    { key:'dataAmostragem', label:'Data de Amostragem', type:'date' }
+  ]},
+  { status:'Aguardando Retirada do Estoque', role:'almox', fields:[
+    { key:'dataAguardandoRet', label:'Data de Retirada / Disponibilização', type:'date' }
+  ]},
+  { status:'Finalizado', role:'almox', fields:[
+    { key:'dataFinalizado', label:'Data Finalizado', type:'date' }
+  ]},
+  { status:'Cancelado', role:'compras', fields:[
+    { key:'dataCancelado', label:'Data Cancelamento', type:'date' }
+  ]}
+];
+
+function canEditStatusInfoGroup(cfg) {
+  if (window.compradorMode) return true;
+  if (window.almoxarifeMode) return cfg.role === 'almox';
+  return false;
+}
+
+function getStatusInfoConfigsPermitidas() {
+  return STATUS_INFO_CONFIG.filter(canEditStatusInfoGroup);
+}
+
+function statusInfoInputId(status, key) {
+  return 'stinfo-' + status.replace(/[^a-zA-Z0-9]/g, '_') + '-' + key;
+}
+
+function renderStatusInfoGroup(p, cfg) {
+  const inputs = cfg.fields.map(f => {
+    const value = p[f.key] ?? '';
+    const step = f.type === 'number' ? ' step="0.01" min="0"' : '';
+    return '<div class="form-group">'
+      + '<label>' + escapeHTML(f.label) + '</label>'
+      + '<input id="' + statusInfoInputId(cfg.status, f.key) + '" type="' + f.type + '" value="' + escapeHTML(value) + '"' + step + ' style="width:100%">'
+      + '</div>';
+  }).join('');
+
+  return '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap">'
+    + '<div style="font-family:Inter,sans-serif;font-weight:700;color:var(--accent2)">🧩 ' + escapeHTML(cfg.status) + '</div>'
+    + '<button class="btn btn-danger" style="padding:7px 12px;font-size:12px" onclick="clearStatusInfo(\'' + escapeHTML(p.sc) + '\',\'' + escapeHTML(cfg.status) + '\')">Apagar etapa</button>'
+    + '</div>'
+    + '<div class="form-grid col3" style="gap:12px">' + inputs + '</div>'
+    + '</div>';
+}
+
+function renderRecebimentosEditor(p) {
+  const canEditReceb = window.compradorMode || window.almoxarifeMode;
+  if (!canEditReceb) return '';
+  let rows = '';
+  (p.itens || []).forEach((item, itemIdx) => {
+    (item.recebimentos || []).forEach((r, recIdx) => {
+      rows += '<tr>'
+        + '<td style="padding:8px;max-width:180px;overflow:hidden;text-overflow:ellipsis" title="'+escapeHTML(item.descricao||'')+'">' + escapeHTML(item.descricao || 'Item') + '</td>'
+        + '<td style="padding:8px"><input class="rec-edit-nf" data-item="'+itemIdx+'" data-rec="'+recIdx+'" value="'+escapeHTML(r.nf||'')+'" style="width:100px"></td>'
+        + '<td style="padding:8px"><input class="rec-edit-data" type="date" data-item="'+itemIdx+'" data-rec="'+recIdx+'" value="'+escapeHTML(r.data||'')+'" style="width:135px"></td>'
+        + '<td style="padding:8px"><input class="rec-edit-qtd" type="number" step="0.01" min="0" data-item="'+itemIdx+'" data-rec="'+recIdx+'" value="'+escapeHTML(r.qtd ?? r.quantidade ?? '')+'" style="width:90px"></td>'
+        + '<td style="padding:8px"><input class="rec-edit-por" data-item="'+itemIdx+'" data-rec="'+recIdx+'" value="'+escapeHTML(r.recebidoPor||'')+'" style="width:130px"></td>'
+        + '<td style="padding:8px"><button class="btn btn-danger" style="padding:6px 10px;font-size:12px" onclick="deleteRecebimentoLinha(\''+escapeHTML(p.sc)+'\','+itemIdx+','+recIdx+')">Apagar</button></td>'
+        + '</tr>';
+    });
+  });
+
+  if (!rows) {
+    return '<div style="background:rgba(0,58,112,0.04);border:1px dashed var(--border);border-radius:12px;padding:16px;margin-top:10px;color:var(--muted);font-size:13px">Nenhum recebimento/NF registrado ainda.</div>';
+  }
+
+  return '<div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px;margin-top:8px;margin-bottom:14px">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap">'
+    + '<div style="font-family:Inter,sans-serif;font-weight:700;color:var(--accent2)">🧾 Recebimentos / NFs por item</div>'
+    + '<button class="btn btn-danger" style="padding:7px 12px;font-size:12px" onclick="clearAllRecebimentos(\''+escapeHTML(p.sc)+'\')">Apagar todos os recebimentos</button>'
+    + '</div>'
+    + '<div class="data-table-wrap"><table style="width:100%;font-size:13px"><thead><tr><th>Item</th><th>NF</th><th>Data</th><th>Qtd.</th><th>Recebido por</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>'
+    + '<div style="font-size:12px;color:var(--muted);margin-top:10px">Ao salvar, os saldos dos itens, NF(s) do pedido, status e KPIs serão recalculados automaticamente.</div>'
+    + '</div>';
+}
+
+function openStatusInfoEditor(sc) {
+  const p = normalizePedidoItems(pedidos.find(x => x.sc === sc));
+  if (!p) return;
+  const configs = getStatusInfoConfigsPermitidas();
+  if (!configs.length) { toast('Você não tem permissão para editar informações das etapas.', 'error'); return; }
+
+  document.getElementById('modal-content').innerHTML =
+    '<div class="modal-header">'
+    + '<div><div style="font-family:Inter,sans-serif;font-size:20px;font-weight:700">✏️ Editar / Apagar informações das etapas</div>'
+    + '<div style="color:var(--muted);font-size:13px;margin-top:4px">' + escapeHTML(p.sc) + ' · alterações recalculam saldos, status e KPIs</div></div>'
+    + '<button class="modal-close" onclick="openModal(\''+escapeHTML(sc)+'\')">✕</button></div>'
+    + '<div style="margin-bottom:14px;padding:12px 14px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.22);border-radius:10px;font-size:13px;color:#92400e">Use <strong>Apagar etapa</strong> para remover dados lançados por engano, ou edite os campos e clique em salvar. Comprador edita todas as etapas; Almoxarife edita etapas operacionais.</div>'
+    + configs.map(cfg => renderStatusInfoGroup(p, cfg)).join('')
+    + '<div class="card-title" style="margin-top:18px"><span>📦</span> Recebimentos e múltiplas NFs</div>'
+    + renderRecebimentosEditor(p)
+    + '<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap">'
+    + '<button class="btn btn-secondary" onclick="openModal(\''+escapeHTML(sc)+'\')">Cancelar</button>'
+    + '<button class="btn btn-primary" onclick="saveStatusInfoEditor(\''+escapeHTML(sc)+'\')">Salvar alterações</button>'
+    + '</div>';
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function applyStatusInfoInputsToPedido(p) {
+  getStatusInfoConfigsPermitidas().forEach(cfg => {
+    cfg.fields.forEach(f => {
+      const el = document.getElementById(statusInfoInputId(cfg.status, f.key));
+      if (!el) return;
+      if (f.type === 'number') p[f.key] = parseQtd(el.value) || 0;
+      else p[f.key] = el.value || '';
+    });
+  });
+
+  // Recalcula saving caso cotação/valor pago tenham sido editados.
+  if (p.valorCotacao && p.valorPago) p.saving = parseQtd(p.valorCotacao) - parseQtd(p.valorPago);
+  if (p.valorRef && p.valorPago) p.savingRef = parseQtd(p.valorRef) - parseQtd(p.valorPago);
+}
+
+function applyRecebimentosEditorToPedido(p) {
+  document.querySelectorAll('.rec-edit-nf').forEach(el => {
+    const item = p.itens[parseInt(el.dataset.item, 10)];
+    const rec = item?.recebimentos?.[parseInt(el.dataset.rec, 10)];
+    if (rec) rec.nf = el.value.trim();
+  });
+  document.querySelectorAll('.rec-edit-data').forEach(el => {
+    const item = p.itens[parseInt(el.dataset.item, 10)];
+    const rec = item?.recebimentos?.[parseInt(el.dataset.rec, 10)];
+    if (rec) rec.data = el.value;
+  });
+  document.querySelectorAll('.rec-edit-qtd').forEach(el => {
+    const item = p.itens[parseInt(el.dataset.item, 10)];
+    const rec = item?.recebimentos?.[parseInt(el.dataset.rec, 10)];
+    if (rec) rec.qtd = parseQtd(el.value) || 0;
+  });
+  document.querySelectorAll('.rec-edit-por').forEach(el => {
+    const item = p.itens[parseInt(el.dataset.item, 10)];
+    const rec = item?.recebimentos?.[parseInt(el.dataset.rec, 10)];
+    if (rec) rec.recebidoPor = el.value.trim();
+  });
+  (p.itens || []).forEach(item => {
+    if (Array.isArray(item.recebimentos)) item.recebimentos = item.recebimentos.filter(r => parseQtd(r.qtd) > 0 || (r.nf || '').trim());
+    normalizeItem(item);
+  });
+}
+
+async function saveStatusInfoEditor(sc) {
+  const p = normalizePedidoItems(pedidos.find(x => x.sc === sc));
+  if (!p) return;
+  applyStatusInfoInputsToPedido(p);
+  applyRecebimentosEditorToPedido(p);
+  recalcPedidoRecebimento(p);
+  await dbUpdate(p);
+  await dbLoad();
+  renderPedidosTable();
+  renderProgramadasTable();
+  renderDashboard();
+  toast('Informações atualizadas e KPIs recalculados.', 'success');
+  openModal(sc);
+}
+
+function clearFieldsForStatus(p, status) {
+  const cfg = STATUS_INFO_CONFIG.find(c => c.status === status);
+  if (!cfg) return;
+  cfg.fields.forEach(f => { p[f.key] = ''; });
+
+  if (status === 'Cotação') {
+    p.valorCotacao = 0; p.fornecedorEsc = ''; p.saving = 0;
+  }
+  if (status === 'Pedido de Compra') {
+    p.docPC = ''; p.valorPago = 0; p.saving = 0; p.savingRef = 0;
+  }
+  if (status === 'Lançar NF') {
+    p.docNFE = ''; p.dataLancarNF = ''; p.dataRecebimento = ''; p.recebidoPor = '';
+  }
+  if (status === 'Finalizado') p.dataFinalizado = '';
+  if (status === 'Cancelado') p.dataCancelado = '';
+}
+
+async function clearStatusInfo(sc, status) {
+  const cfg = STATUS_INFO_CONFIG.find(c => c.status === status);
+  if (!cfg || !canEditStatusInfoGroup(cfg)) { toast('Você não tem permissão para apagar esta etapa.', 'error'); return; }
+  if (!confirm('Apagar as informações da etapa "' + status + '" desta solicitação?')) return;
+  const p = normalizePedidoItems(pedidos.find(x => x.sc === sc));
+  if (!p) return;
+  clearFieldsForStatus(p, status);
+  recalcPedidoRecebimento(p);
+  await dbUpdate(p);
+  await dbLoad();
+  renderPedidosTable();
+  renderProgramadasTable();
+  renderDashboard();
+  toast('Informações da etapa apagadas e KPIs atualizados.', 'success');
+  openStatusInfoEditor(sc);
+}
+
+async function deleteRecebimentoLinha(sc, itemIdx, recIdx) {
+  if (!(window.compradorMode || window.almoxarifeMode)) { toast('Sem permissão para apagar recebimentos.', 'error'); return; }
+  if (!confirm('Apagar este recebimento/NF do item?')) return;
+  const p = normalizePedidoItems(pedidos.find(x => x.sc === sc));
+  if (!p || !p.itens[itemIdx] || !p.itens[itemIdx].recebimentos) return;
+  p.itens[itemIdx].recebimentos.splice(recIdx, 1);
+  normalizeItem(p.itens[itemIdx]);
+  recalcPedidoRecebimento(p);
+  await dbUpdate(p);
+  await dbLoad();
+  renderPedidosTable();
+  renderProgramadasTable();
+  renderDashboard();
+  toast('Recebimento apagado e KPIs atualizados.', 'success');
+  openStatusInfoEditor(sc);
+}
+
+async function clearAllRecebimentos(sc) {
+  if (!(window.compradorMode || window.almoxarifeMode)) { toast('Sem permissão para apagar recebimentos.', 'error'); return; }
+  if (!confirm('Apagar TODOS os recebimentos/NFs desta solicitação?')) return;
+  const p = normalizePedidoItems(pedidos.find(x => x.sc === sc));
+  if (!p) return;
+  (p.itens || []).forEach(item => { item.recebimentos = []; item.qtdRecebida = 0; item.statusItem = 'Pendente'; normalizeItem(item); });
+  p.docNFE = '';
+  p.dataLancarNF = '';
+  p.dataRecebimento = '';
+  p.recebidoPor = '';
+  if (['Recebimento Parcial','Lançar NF'].includes(p.status)) p.status = 'A Caminho';
+  await dbUpdate(p);
+  await dbLoad();
+  renderPedidosTable();
+  renderProgramadasTable();
+  renderDashboard();
+  toast('Recebimentos apagados e pedido recalculado.', 'success');
+  openStatusInfoEditor(sc);
 }
