@@ -870,6 +870,102 @@ function selectStatusOption(el, next) {
     + '</div>';
 }
 
+
+
+// =========================================================
+// v1.1.3 — LIMPEZA AUTOMÁTICA AO VOLTAR STATUS
+// =========================================================
+const STATUS_FLOW_ORDER = ['Solicitado','Cotação','Pedido de Compra','Aguardando Pagamento','A Caminho','Recebimento Parcial','Lançar NF','Conferência','Aguardando Identificação','Amostragem','Aguardando Retirada do Estoque','Finalizado'];
+
+function statusFlowIndex(status) {
+  const idx = STATUS_FLOW_ORDER.indexOf(status);
+  return idx >= 0 ? idx : 999;
+}
+
+function clearRecebimentoItemData(p) {
+  if (!p || !Array.isArray(p.itens)) return;
+  p.itens.forEach(item => {
+    item.recebimentos = [];
+    item.qtdRecebida = 0;
+    item.quantidadeRecebida = 0;
+    item.statusItem = 'Pendente';
+    item.volume = '';
+    item.amoCaixas = '';
+    item.amoItens = '';
+  });
+}
+
+function clearStageDataAfterStatus(p, nextStatus) {
+  if (!p || !nextStatus) return false;
+  const currentIdx = statusFlowIndex(p.status);
+  const nextIdx = statusFlowIndex(nextStatus);
+
+  // Só limpa campos quando o fluxo está voltando. Avançar status não apaga dados anteriores.
+  if (nextIdx >= currentIdx) return false;
+
+  const before = JSON.stringify(p);
+  const idx = statusFlowIndex;
+
+  // Ao voltar para antes de uma etapa, limpa os campos que pertencem a essa etapa e às etapas seguintes.
+  if (nextIdx < idx('Cotação')) {
+    p.fornecedorEsc = '';
+    p.valorCotacao = 0;
+    p.dataCotacao = '';
+  }
+
+  if (nextIdx < idx('Pedido de Compra')) {
+    p.docPC = '';
+    p.valorPago = 0;
+    p.saving = 0;
+    p.savingRef = 0;
+    p.dataPedidoCompra = '';
+  }
+
+  if (nextIdx < idx('Aguardando Pagamento')) {
+    p.docFatura = '';
+    p.dataAguardando = '';
+  }
+
+  if (nextIdx < idx('A Caminho')) {
+    p.rastreio = '';
+    p.previsaoEntrega = '';
+    p.dataACaminho = '';
+  }
+
+  // Se voltar para antes de Recebimento Parcial, entende-se que o recebimento/NF lançado estava incorreto.
+  // Então apaga NF, data de recebimento e quantidades recebidas dos itens.
+  if (nextIdx < idx('Recebimento Parcial')) {
+    p.docNFE = '';
+    p.dataLancarNF = '';
+    p.dataRecebimento = '';
+    p.recebidoPor = '';
+    clearRecebimentoItemData(p);
+  }
+
+  if (nextIdx < idx('Conferência')) {
+    p.dataConferencia = '';
+  }
+
+  if (nextIdx < idx('Aguardando Identificação')) {
+    p.dataAguardandoId = '';
+  }
+
+  if (nextIdx < idx('Amostragem')) {
+    p.dataAmostragem = '';
+    if (Array.isArray(p.itens)) p.itens.forEach(item => { item.amoCaixas = ''; item.amoItens = ''; });
+  }
+
+  if (nextIdx < idx('Aguardando Retirada do Estoque')) {
+    p.dataAguardandoRet = '';
+  }
+
+  if (nextIdx < idx('Finalizado')) {
+    p.dataFinalizado = '';
+  }
+
+  return before !== JSON.stringify(p);
+}
+
 function confirmUpdateStatus() {
   const sc   = window._currentUpdateSC;
   const next = window._currentUpdateNext;
@@ -877,6 +973,7 @@ function confirmUpdateStatus() {
   const p = pedidos.find(x => x.sc === sc);
   if (!p) return;
   const today = new Date().toISOString().split('T')[0];
+  const rollbackLimpouDados = clearStageDataAfterStatus(p, next);
 
   // per-step validation & data
   if (next === 'Cotação') {
@@ -944,8 +1041,11 @@ function confirmUpdateStatus() {
 
   p.status = next;
   dbUpdate(p);
-  toast('✔ Status atualizado para: ' + next, 'success');
+  toast(rollbackLimpouDados ? '✔ Status atualizado para: ' + next + '. Dados das etapas posteriores foram limpos.' : '✔ Status atualizado para: ' + next, 'success');
   openModal(sc);
+  renderPedidosTable();
+  renderDashboard();
+  try { renderRecebimentosCentral(); } catch(e) {}
 }
 
 
