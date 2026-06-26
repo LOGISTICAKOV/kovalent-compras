@@ -22,6 +22,7 @@
     <button class="nav-btn active" id="nav-solicitar" onclick="switchTab('solicitar')">📋 Solicitar</button>
     <button class="nav-btn" id="nav-programadas" onclick="switchTab('programadas')">📅 Programadas</button>
     <button class="nav-btn" id="nav-pedidos" onclick="switchTab('pedidos')">📦 Todos os Pedidos</button>
+    <button class="nav-btn locked" id="nav-recebimentos" onclick="requireAlmoxarife('recebimentos')">📥 Recebimentos <span class="lock-icon">🔒</span></button>
     <button class="nav-btn locked" id="nav-painel" onclick="requireComprador('painel')">📊 Painel de KPI <span class="lock-icon">🔒</span></button>
     <button class="nav-btn locked" id="nav-config" onclick="requireComprador('config')">⚙️ Configurar <span class="lock-icon">🔒</span></button>
   </nav>
@@ -328,6 +329,38 @@
 
     <div class="card">
       <div class="data-table-wrap" id="pedidos-table"></div>
+    </div>
+  </div>
+
+
+  <!-- ===================== RECEBIMENTOS ===================== -->
+  <div class="tab-pane" id="tab-recebimentos">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px">
+      <div class="page-title" style="margin-bottom:0">Central de Recebimentos</div>
+      <button class="btn btn-secondary" onclick="renderRecebimentosCentral()">🔄 Atualizar</button>
+    </div>
+    <div class="page-sub">Tela operacional do almoxarifado para registrar entregas parciais, selecionar itens e atualizar automaticamente o pedido</div>
+
+    <div class="kpi-grid" id="recebimentos-kpis" style="margin-bottom:20px"></div>
+
+    <div style="display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap">
+      <input type="text" id="filterRecebimentos" placeholder="🔍 Buscar por SC, item, solicitante, depto, fornecedor ou NF..." style="flex:1; min-width:220px" oninput="renderRecebimentosCentral()">
+      <select id="filterRecebimentosStatus" onchange="renderRecebimentosCentral()" style="min-width:190px">
+        <option value="">Todos os recebíveis</option>
+        <option value="pendente">Sem recebimento</option>
+        <option value="parcial">Recebimento parcial</option>
+        <option value="concluido">Totalmente recebido</option>
+      </select>
+    </div>
+
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-title"><span>📥</span> Pedidos Aguardando Recebimento</div>
+      <div class="data-table-wrap" id="recebimentos-table"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span>🧾</span> Últimas NFs / Recebimentos</div>
+      <div class="data-table-wrap" id="recebimentos-historico"></div>
     </div>
   </div>
 

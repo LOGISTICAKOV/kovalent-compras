@@ -395,3 +395,21 @@
 
 /* v1.1 - Recebimento parcial */
 .status-recebimentoparcial { background: rgba(217,119,6,0.16); color: #d97706; }
+
+/* v1.1.2 — Central de Recebimentos */
+.status-recebimentoparcial {
+  background: rgba(217,119,6,0.14);
+  color: #d97706;
+}
+#tab-recebimentos table td,
+#tab-recebimentos table th {
+  vertical-align: middle;
+}
+#tab-recebimentos .btn {
+  white-space: nowrap;
+}
+@media (max-width: 768px) {
+  #tab-recebimentos .kpi-grid {
+    grid-template-columns: 1fr;
+  }
+}

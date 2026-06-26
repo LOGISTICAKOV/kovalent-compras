@@ -3018,3 +3018,259 @@ function submitSolicitacao() {
   generateSC();
   addItemRow();
 }
+
+
+// =========================================================
+// v1.1.2 — CENTRAL DE RECEBIMENTOS
+// =========================================================
+(function initV112CentralRecebimentos(){
+  document.addEventListener('DOMContentLoaded', () => {
+    try { addRecebimentosNavAccess(); } catch(e) {}
+  });
+})();
+
+function addRecebimentosNavAccess() {
+  const nav = document.getElementById('nav-recebimentos');
+  if (!nav) return;
+  if (window.almoxarifeMode || window.compradorMode) {
+    nav.classList.remove('locked');
+    const lock = nav.querySelector('.lock-icon');
+    if (lock) lock.textContent = '';
+  } else {
+    nav.classList.add('locked');
+    const lock = nav.querySelector('.lock-icon');
+    if (lock) lock.textContent = '🔒';
+  }
+}
+
+function requireAlmoxarife(tab) {
+  if (window.almoxarifeMode || window.compradorMode) {
+    switchTab(tab);
+    return;
+  }
+  window._pendingAlmoxTab = tab;
+  document.getElementById('alm-pwd-input').value = '';
+  document.getElementById('alm-pwd-error').textContent = '';
+  document.getElementById('alm-pwd-overlay').style.display = 'flex';
+  setTimeout(() => document.getElementById('alm-pwd-input').focus(), 100);
+}
+
+// Wrap original mode functions so the Central is unlocked/locked visually.
+if (typeof toggleModoAlmoxarife === 'function' && !window._v112_toggleAlmoxWrapped) {
+  window._v112_toggleAlmoxWrapped = true;
+  const _oldToggleAlmoxarife = toggleModoAlmoxarife;
+  toggleModoAlmoxarife = function() {
+    const r = _oldToggleAlmoxarife.apply(this, arguments);
+    setTimeout(addRecebimentosNavAccess, 80);
+    return r;
+  };
+}
+
+if (typeof checkAlmoxarifePassword === 'function' && !window._v112_checkAlmoxWrapped) {
+  window._v112_checkAlmoxWrapped = true;
+  const _oldCheckAlmoxarifePassword = checkAlmoxarifePassword;
+  checkAlmoxarifePassword = function() {
+    const before = window.almoxarifeMode;
+    const r = _oldCheckAlmoxarifePassword.apply(this, arguments);
+    setTimeout(() => {
+      addRecebimentosNavAccess();
+      if (!before && window.almoxarifeMode && window._pendingAlmoxTab) {
+        const tab = window._pendingAlmoxTab;
+        window._pendingAlmoxTab = null;
+        switchTab(tab);
+      }
+    }, 120);
+    return r;
+  };
+}
+
+if (typeof checkPassword === 'function' && !window._v112_checkCompradorWrapped) {
+  window._v112_checkCompradorWrapped = true;
+  const _oldCheckPassword = checkPassword;
+  checkPassword = function() {
+    const r = _oldCheckPassword.apply(this, arguments);
+    setTimeout(addRecebimentosNavAccess, 120);
+    return r;
+  };
+}
+
+// Wrap switchTab to render the central automatically.
+if (typeof switchTab === 'function' && !window._v112_switchWrapped) {
+  window._v112_switchWrapped = true;
+  const _oldSwitchTab = switchTab;
+  switchTab = function(name) {
+    const r = _oldSwitchTab.apply(this, arguments);
+    if (name === 'recebimentos') renderRecebimentosCentral();
+    return r;
+  };
+}
+
+// Refresh Central after saving a receipt.
+if (typeof confirmRecebimento === 'function' && !window._v112_confirmRecebimentoWrapped) {
+  window._v112_confirmRecebimentoWrapped = true;
+  const _oldConfirmRecebimento = confirmRecebimento;
+  confirmRecebimento = async function(sc) {
+    const r = await _oldConfirmRecebimento.apply(this, arguments);
+    setTimeout(() => {
+      const active = document.querySelector('.tab-pane.active');
+      if (active && active.id === 'tab-recebimentos') renderRecebimentosCentral();
+    }, 250);
+    return r;
+  };
+}
+
+function pedidoPodeReceber(p) {
+  if (!p || !Array.isArray(p.itens)) return false;
+  if (['Finalizado','Cancelado'].includes(p.status)) return false;
+  return p.itens.some(i => getItemSaldo(i) > 0);
+}
+
+function pedidoRecebimentoSituacao(p) {
+  normalizePedidoItems(p);
+  const temRecebido = pedidoTemRecebimento(p);
+  const todos = pedidoTodosItensRecebidos(p);
+  if (todos) return 'concluido';
+  if (temRecebido) return 'parcial';
+  return 'pendente';
+}
+
+function recebimentoSituacaoBadge(s) {
+  if (s === 'concluido') return '<span style="padding:4px 10px;border-radius:999px;font-size:11px;font-weight:700;background:rgba(5,150,105,.12);color:#059669">Total recebido</span>';
+  if (s === 'parcial') return '<span style="padding:4px 10px;border-radius:999px;font-size:11px;font-weight:700;background:rgba(217,119,6,.13);color:#d97706">Parcial</span>';
+  return '<span style="padding:4px 10px;border-radius:999px;font-size:11px;font-weight:700;background:rgba(107,127,150,.13);color:#6b7f96">Pendente</span>';
+}
+
+function renderRecebimentosCentral() {
+  const table = document.getElementById('recebimentos-table');
+  const hist = document.getElementById('recebimentos-historico');
+  const kpis = document.getElementById('recebimentos-kpis');
+  if (!table) return;
+
+  const q = (document.getElementById('filterRecebimentos')?.value || '').toLowerCase().trim();
+  const statusFiltro = document.getElementById('filterRecebimentosStatus')?.value || '';
+
+  pedidos.forEach(normalizePedidoItems);
+
+  const base = pedidos.filter(p => {
+    if (!p || !Array.isArray(p.itens)) return false;
+    if (['Cancelado'].includes(p.status)) return false;
+    const situacao = pedidoRecebimentoSituacao(p);
+    if (statusFiltro && situacao !== statusFiltro) return false;
+
+    const nfs = getPedidoNFs(p).map(n => n.nf).join(' ');
+    const hay = [
+      p.sc, p.empresa, p.solicitante, p.departamento, p.fornecedorEsc, p.fornecedorSug, p.status, nfs,
+      ...(p.itens || []).map(i => i.descricao + ' ' + (i.ref || ''))
+    ].join(' ').toLowerCase();
+    if (q && !hay.includes(q)) return false;
+
+    return pedidoPodeReceber(p) || pedidoTemRecebimento(p);
+  }).sort((a,b) => {
+    const sa = pedidoRecebimentoSituacao(a);
+    const sb = pedidoRecebimentoSituacao(b);
+    const order = { parcial: 0, pendente: 1, concluido: 2 };
+    if (order[sa] !== order[sb]) return order[sa] - order[sb];
+    return (b.dataRecebimento || b.data || '').localeCompare(a.dataRecebimento || a.data || '');
+  });
+
+  const recebiveis = pedidos.filter(p => pedidoPodeReceber(normalizePedidoItems(p))).length;
+  const parciais = pedidos.filter(p => pedidoRecebimentoSituacao(p) === 'parcial').length;
+  const concluidos = pedidos.filter(p => pedidoRecebimentoSituacao(p) === 'concluido').length;
+  const nfsMes = getTodosRecebimentos().filter(r => {
+    if (!r.data) return false;
+    const d = new Date(r.data);
+    const h = new Date();
+    return d.getMonth() === h.getMonth() && d.getFullYear() === h.getFullYear();
+  }).length;
+
+  if (kpis) {
+    kpis.innerHTML =
+      '<div class="kpi-card"><div class="kpi-label">📥 Pedidos Recebíveis</div><div class="kpi-value accent" style="font-size:26px">'+recebiveis+'</div><div class="kpi-sub">com saldo pendente</div></div>'
+      + '<div class="kpi-card" style="border-color:rgba(217,119,6,.25)"><div class="kpi-label">🟡 Parciais</div><div class="kpi-value warn" style="font-size:26px">'+parciais+'</div><div class="kpi-sub">já receberam parte dos itens</div></div>'
+      + '<div class="kpi-card" style="border-color:rgba(5,150,105,.25)"><div class="kpi-label">✅ Totalmente Recebidos</div><div class="kpi-value accent" style="font-size:26px">'+concluidos+'</div><div class="kpi-sub">itens completos</div></div>'
+      + '<div class="kpi-card" style="border-color:rgba(0,58,112,.20)"><div class="kpi-label">🧾 NFs no Mês</div><div class="kpi-value info" style="font-size:26px">'+nfsMes+'</div><div class="kpi-sub">recebimentos registrados</div></div>';
+  }
+
+  if (!base.length) {
+    table.innerHTML = '<div class="empty-state" style="padding:34px"><div class="icon">📥</div><h3>Nenhum pedido para recebimento</h3><p>Use os filtros ou avance pedidos para etapa de entrega.</p></div>';
+  } else {
+    const rows = base.map(p => {
+      const totalItens = (p.itens || []).length;
+      const recebidos = (p.itens || []).filter(i => getItemStatus(i) === 'Recebido').length;
+      const parciaisItens = (p.itens || []).filter(i => getItemStatus(i) === 'Parcial').length;
+      const saldoTotal = (p.itens || []).reduce((s,i) => s + getItemSaldo(i), 0);
+      const nfs = getPedidoNFs(p).map(n => n.nf).join(', ') || '—';
+      const situacao = pedidoRecebimentoSituacao(p);
+      const firstItem = p.itens && p.itens[0] ? p.itens[0].descricao : '—';
+
+      return '<tr>'
+        + '<td class="clickable" onclick="openModal(\''+p.sc+'\')"><strong style="color:var(--accent2)">'+escapeHTML(p.sc)+'</strong></td>'
+        + '<td class="clickable" onclick="openModal(\''+p.sc+'\')" style="max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escapeHTML(firstItem)+'">'+escapeHTML(firstItem)+(totalItens>1?' <span style="color:var(--muted);font-size:11px">+'+(totalItens-1)+'</span>':'')+'</td>'
+        + '<td>'+escapeHTML(p.empresa||'—')+'</td>'
+        + '<td>'+escapeHTML(p.departamento||'—')+'</td>'
+        + '<td><span class="status-badge status-'+statusKey(p.status)+'">'+escapeHTML(p.status||'—')+'</span></td>'
+        + '<td>'+recebimentoSituacaoBadge(situacao)+'</td>'
+        + '<td style="font-size:12px;color:var(--muted)">'+recebidos+'/'+totalItens+' recebidos'+(parciaisItens ? '<br><span style="color:#d97706">'+parciaisItens+' parcial(is)</span>' : '')+'</td>'
+        + '<td style="font-weight:600;color:'+(saldoTotal>0?'#d97706':'#059669')+'">'+formatQty(saldoTotal)+'</td>'
+        + '<td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escapeHTML(nfs)+'">'+escapeHTML(nfs)+'</td>'
+        + '<td style="white-space:nowrap">'
+        + (pedidoPodeReceber(p) ? '<button class="btn btn-primary" style="padding:7px 12px;font-size:12px" onclick="openRecebimentoModal(\''+p.sc+'\')">📥 Registrar</button> ' : '')
+        + '<button class="btn btn-secondary" style="padding:7px 12px;font-size:12px" onclick="openModal(\''+p.sc+'\')">Detalhes</button>'
+        + '</td>'
+        + '</tr>';
+    }).join('');
+
+    table.innerHTML =
+      '<table><thead><tr>'
+      + '<th>SC</th><th>Item</th><th>Empresa</th><th>Depto.</th><th>Status Pedido</th><th>Recebimento</th><th>Itens</th><th>Saldo</th><th>NF(s)</th><th>Ação</th>'
+      + '</tr></thead><tbody>'+rows+'</tbody></table>';
+  }
+
+  if (hist) renderRecebimentosHistorico(hist);
+}
+
+function getTodosRecebimentos() {
+  const recs = [];
+  pedidos.forEach(p => {
+    normalizePedidoItems(p);
+    (p.itens || []).forEach((item, idx) => {
+      (item.recebimentos || []).forEach(r => {
+        recs.push({
+          sc: p.sc,
+          empresa: p.empresa || '',
+          departamento: p.departamento || '',
+          itemIdx: idx,
+          item: item.descricao || 'Item',
+          unidade: item.unidade || '',
+          nf: r.nf || r.numeroNF || '',
+          data: r.data || '',
+          qtd: parseQtd(r.qtd ?? r.quantidade),
+          recebidoPor: r.recebidoPor || '',
+          obs: r.obs || '',
+          criadoEm: r.criadoEm || ''
+        });
+      });
+    });
+  });
+  return recs.sort((a,b) => (b.data || b.criadoEm || '').localeCompare(a.data || a.criadoEm || ''));
+}
+
+function renderRecebimentosHistorico(container) {
+  const recs = getTodosRecebimentos().slice(0, 30);
+  if (!recs.length) {
+    container.innerHTML = '<div class="empty-state" style="padding:28px"><div class="icon">🧾</div><h3>Nenhum recebimento registrado</h3></div>';
+    return;
+  }
+
+  container.innerHTML = '<table><thead><tr><th>Data</th><th>NF</th><th>SC</th><th>Item</th><th>Qtd.</th><th>Recebido por</th><th>Obs.</th></tr></thead><tbody>'
+    + recs.map(r => '<tr class="clickable" onclick="openModal(\''+r.sc+'\')">'
+      + '<td>'+formatDate(r.data)+'</td>'
+      + '<td><strong style="color:var(--accent2)">NF '+escapeHTML(r.nf || '—')+'</strong></td>'
+      + '<td>'+escapeHTML(r.sc)+'</td>'
+      + '<td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escapeHTML(r.item)+'">'+escapeHTML(r.item)+'</td>'
+      + '<td>'+formatQty(r.qtd)+' '+escapeHTML(r.unidade)+'</td>'
+      + '<td>'+escapeHTML(r.recebidoPor || '—')+'</td>'
+      + '<td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escapeHTML(r.obs || '')+'">'+escapeHTML(r.obs || '—')+'</td>'
+      + '</tr>').join('')
+    + '</tbody></table>';
+}
