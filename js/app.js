@@ -3639,3 +3639,341 @@ async function clearAllRecebimentos(sc) {
   toast('Recebimentos apagados e pedido recalculado.', 'success');
   openStatusInfoEditor(sc);
 }
+
+// =========================================================
+// v1.1.6 — SAVING POR ITEM E FORNECEDORES COTADOS
+// =========================================================
+(function initV116SavingPorItem(){
+  // Mantém compatibilidade com versões anteriores: itens antigos continuam funcionando.
+  if (typeof normalizeItem === 'function' && !window._v116_normalizeItemWrapped) {
+    window._v116_normalizeItemWrapped = true;
+    const _oldNormalizeItem = normalizeItem;
+    normalizeItem = function(item) {
+      item = _oldNormalizeItem(item || {});
+      if (item.valorCotadoItem === undefined && item.valorCotado !== undefined) item.valorCotadoItem = item.valorCotado;
+      if (item.valorNegociadoItem === undefined && item.valorNegociado !== undefined) item.valorNegociadoItem = item.valorNegociado;
+      if (item.fornecedorCotado === undefined) item.fornecedorCotado = '';
+      if (item.fornecedorComprado === undefined) item.fornecedorComprado = '';
+      if (item.obsNegociacao === undefined) item.obsNegociacao = '';
+      item.savingItem = getItemSavingValue(item);
+      return item;
+    };
+  }
+
+  if (typeof renderDashboard === 'function' && !window._v116_renderDashboardWrapped) {
+    window._v116_renderDashboardWrapped = true;
+    const _oldRenderDashboard = renderDashboard;
+    renderDashboard = function() {
+      pedidos.forEach(p => recalcPedidoFinanceiroPorItem(p));
+      return _oldRenderDashboard.apply(this, arguments);
+    };
+  }
+
+  if (typeof selectStatusOption === 'function' && !window._v116_selectStatusWrapped) {
+    window._v116_selectStatusWrapped = true;
+    const _oldSelectStatusOption = selectStatusOption;
+    selectStatusOption = function(el, next) {
+      const r = _oldSelectStatusOption.apply(this, arguments);
+      try { injectSavingPorItemNoStatus(next); } catch(e) { console.warn('saving item UI error', e); }
+      return r;
+    };
+  }
+
+  if (typeof confirmUpdateStatus === 'function' && !window._v116_confirmStatusWrapped) {
+    window._v116_confirmStatusWrapped = true;
+    const _oldConfirmUpdateStatus = confirmUpdateStatus;
+    confirmUpdateStatus = function() {
+      const sc = window._currentUpdateSC;
+      const p = pedidos.find(x => x.sc === sc);
+      if (p) {
+        applySavingPorItemInputs(p);
+        recalcPedidoFinanceiroPorItem(p);
+        // Alimenta os campos agregados já existentes para manter validação e KPIs antigos funcionando.
+        const cot = document.getElementById('us-cotacao');
+        const pago = document.getElementById('us-valorpago');
+        if (cot && pedidoTemFinanceiroPorItem(p)) cot.value = parseQtd(p.valorCotacao).toFixed(2);
+        if (pago && pedidoTemFinanceiroPorItem(p)) pago.value = parseQtd(p.valorPago).toFixed(2);
+      }
+      return _oldConfirmUpdateStatus.apply(this, arguments);
+    };
+  }
+
+  if (typeof openModal === 'function' && !window._v116_openModalWrapped) {
+    window._v116_openModalWrapped = true;
+    const _oldOpenModal = openModal;
+    openModal = function(sc) {
+      const r = _oldOpenModal.apply(this, arguments);
+      try { injectResumoSavingPorItem(sc); } catch(e) { console.warn('saving summary error', e); }
+      return r;
+    };
+  }
+
+  if (typeof openStatusInfoEditor === 'function' && !window._v116_statusInfoWrapped) {
+    window._v116_statusInfoWrapped = true;
+    const _oldOpenStatusInfoEditor = openStatusInfoEditor;
+    openStatusInfoEditor = function(sc) {
+      const r = _oldOpenStatusInfoEditor.apply(this, arguments);
+      try { injectEditorSavingPorItem(sc); } catch(e) { console.warn('saving editor error', e); }
+      return r;
+    };
+  }
+
+  if (typeof saveStatusInfoEditor === 'function' && !window._v116_saveStatusInfoWrapped) {
+    window._v116_saveStatusInfoWrapped = true;
+    const _oldSaveStatusInfoEditor = saveStatusInfoEditor;
+    saveStatusInfoEditor = async function(sc) {
+      const p = pedidos.find(x => x.sc === sc);
+      if (p) {
+        applySavingPorItemInputs(p);
+        recalcPedidoFinanceiroPorItem(p);
+      }
+      return await _oldSaveStatusInfoEditor.apply(this, arguments);
+    };
+  }
+})();
+
+function getItemValorCotado(item) {
+  return parseQtd(item?.valorCotadoItem ?? item?.valorCotado ?? 0);
+}
+
+function getItemValorNegociado(item) {
+  return parseQtd(item?.valorNegociadoItem ?? item?.valorNegociado ?? 0);
+}
+
+function getItemSavingValue(item) {
+  const cotado = getItemValorCotado(item);
+  const comprado = getItemValorNegociado(item);
+  if (!cotado && !comprado) return 0;
+  return cotado - comprado;
+}
+
+function itemTemFinanceiro(item) {
+  return !!(getItemValorCotado(item) || getItemValorNegociado(item) || item?.fornecedorCotado || item?.fornecedorComprado || item?.obsNegociacao);
+}
+
+function pedidoTemFinanceiroPorItem(p) {
+  return !!(p && Array.isArray(p.itens) && p.itens.some(itemTemFinanceiro));
+}
+
+function recalcPedidoFinanceiroPorItem(p) {
+  if (!p || !Array.isArray(p.itens)) return p;
+  p.itens.forEach(item => {
+    item.savingItem = getItemSavingValue(item);
+  });
+  if (!pedidoTemFinanceiroPorItem(p)) return p;
+
+  const totalCotado = p.itens.reduce((s, i) => s + getItemValorCotado(i), 0);
+  const totalPago = p.itens.reduce((s, i) => s + getItemValorNegociado(i), 0);
+  const totalSaving = p.itens.reduce((s, i) => s + getItemSavingValue(i), 0);
+
+  // O saving por item passa a ser a base prioritária dos KPIs.
+  p.valorCotacao = totalCotado;
+  p.valorPago = totalPago;
+  p.saving = totalSaving;
+  if (p.valorRef && totalPago) p.savingRef = parseQtd(p.valorRef) - totalPago;
+  return p;
+}
+
+function buildSavingPorItemEditor(p, modo) {
+  p = normalizePedidoItems(p);
+  const isCotacao = modo === 'cotacao';
+  const titulo = isCotacao ? '💬 Cotação por item' : '📝 Valor negociado por item';
+  const ajuda = isCotacao
+    ? 'Informe o fornecedor e o valor cotado de cada item. Ex.: cotado no fornecedor X, valor Y.'
+    : 'Informe o fornecedor comprado e o valor negociado de cada item. Ex.: comprado no fornecedor A, valor B.';
+
+  const rows = (p.itens || []).map((item, idx) => {
+    const qtd = formatQty(getItemQtd(item));
+    return '<tr>'
+      + '<td style="padding:8px;min-width:180px"><strong>'+escapeHTML(item.descricao||'Item')+'</strong><div style="font-size:11px;color:var(--muted)">Qtd: '+qtd+' '+escapeHTML(item.unidade||'')+(item.ref?' · Ref: '+escapeHTML(item.ref):'')+'</div></td>'
+      + '<td style="padding:8px"><input class="fin-forn-cotado" data-idx="'+idx+'" value="'+escapeHTML(item.fornecedorCotado||'')+'" placeholder="Fornecedor cotado" style="width:150px"></td>'
+      + '<td style="padding:8px"><input class="fin-valor-cotado" data-idx="'+idx+'" type="number" step="0.01" min="0" value="'+escapeHTML(getItemValorCotado(item) || '')+'" placeholder="0,00" style="width:105px"></td>'
+      + '<td style="padding:8px"><input class="fin-forn-comprado" data-idx="'+idx+'" value="'+escapeHTML(item.fornecedorComprado||'')+'" placeholder="Fornecedor comprado" style="width:150px"></td>'
+      + '<td style="padding:8px"><input class="fin-valor-comprado" data-idx="'+idx+'" type="number" step="0.01" min="0" value="'+escapeHTML(getItemValorNegociado(item) || '')+'" placeholder="0,00" style="width:105px"></td>'
+      + '<td style="padding:8px"><input class="fin-obs" data-idx="'+idx+'" value="'+escapeHTML(item.obsNegociacao||'')+'" placeholder="Ex.: desconto só neste item" style="width:180px"></td>'
+      + '<td style="padding:8px"><strong style="color:#059669">'+fmtBRL(getItemSavingValue(item))+'</strong></td>'
+      + '</tr>';
+  }).join('');
+
+  return '<div id="saving-item-editor" style="background:rgba(0,169,157,0.05);border:1px solid rgba(0,169,157,0.18);border-radius:12px;padding:16px;margin-bottom:14px">'
+    + '<div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;margin-bottom:10px">'
+    + '<div><div style="font-family:Inter,sans-serif;font-weight:700;color:var(--accent2)">'+titulo+'</div>'
+    + '<div style="font-size:12px;color:var(--muted);margin-top:3px">'+ajuda+'</div></div>'
+    + '<button type="button" class="btn btn-secondary" style="padding:7px 12px;font-size:12px" onclick="limparSavingPorItemInputs()">Limpar valores por item</button>'
+    + '</div>'
+    + '<div class="data-table-wrap"><table style="width:100%;font-size:13px"><thead><tr>'
+    + '<th>Item</th><th>Fornecedor cotado</th><th>Valor cotado</th><th>Fornecedor comprado</th><th>Valor comprado</th><th>Observação</th><th>Saving</th>'
+    + '</tr></thead><tbody>'+rows+'</tbody></table></div>'
+    + '<div style="font-size:12px;color:var(--muted);margin-top:10px">O KPI de Saving usará a soma dos itens quando houver qualquer valor preenchido por item.</div>'
+    + '</div>';
+}
+
+function injectSavingPorItemNoStatus(next) {
+  if (!['Cotação','Pedido de Compra'].includes(next)) return;
+  const sc = window._currentUpdateSC;
+  const p = pedidos.find(x => x.sc === sc);
+  const container = document.getElementById('status-extra-fields');
+  if (!p || !container || document.getElementById('saving-item-editor')) return;
+  const html = buildSavingPorItemEditor(p, next === 'Cotação' ? 'cotacao' : 'compra');
+  const hr = container.querySelector('hr');
+  if (hr) hr.insertAdjacentHTML('beforebegin', html);
+  else container.insertAdjacentHTML('afterbegin', html);
+}
+
+function applySavingPorItemInputs(p) {
+  if (!p || !Array.isArray(p.itens)) return p;
+  const touched = document.querySelector('.fin-forn-cotado,.fin-valor-cotado,.fin-forn-comprado,.fin-valor-comprado,.fin-obs');
+  if (!touched) return p;
+
+  document.querySelectorAll('.fin-forn-cotado').forEach(el => {
+    const item = p.itens[parseInt(el.dataset.idx, 10)];
+    if (item) item.fornecedorCotado = el.value.trim();
+  });
+  document.querySelectorAll('.fin-valor-cotado').forEach(el => {
+    const item = p.itens[parseInt(el.dataset.idx, 10)];
+    if (item) item.valorCotadoItem = parseQtd(el.value) || 0;
+  });
+  document.querySelectorAll('.fin-forn-comprado').forEach(el => {
+    const item = p.itens[parseInt(el.dataset.idx, 10)];
+    if (item) item.fornecedorComprado = el.value.trim();
+  });
+  document.querySelectorAll('.fin-valor-comprado').forEach(el => {
+    const item = p.itens[parseInt(el.dataset.idx, 10)];
+    if (item) item.valorNegociadoItem = parseQtd(el.value) || 0;
+  });
+  document.querySelectorAll('.fin-obs').forEach(el => {
+    const item = p.itens[parseInt(el.dataset.idx, 10)];
+    if (item) item.obsNegociacao = el.value.trim();
+  });
+  recalcPedidoFinanceiroPorItem(p);
+  return p;
+}
+
+function limparSavingPorItemInputs() {
+  document.querySelectorAll('.fin-forn-cotado,.fin-forn-comprado,.fin-obs').forEach(el => el.value = '');
+  document.querySelectorAll('.fin-valor-cotado,.fin-valor-comprado').forEach(el => el.value = '');
+  toast('Campos de saving por item limpos na tela. Clique em salvar/confirmar para gravar.', 'success');
+}
+
+function buildResumoSavingPorItem(p) {
+  if (!pedidoTemFinanceiroPorItem(p)) return '';
+  recalcPedidoFinanceiroPorItem(p);
+  const rows = (p.itens || []).filter(itemTemFinanceiro).map(item => {
+    const saving = getItemSavingValue(item);
+    const cor = saving >= 0 ? '#059669' : '#dc2626';
+    return '<tr>'
+      + '<td style="padding:8px">'+escapeHTML(item.descricao||'Item')+'</td>'
+      + '<td style="padding:8px">'+(item.fornecedorCotado ? escapeHTML(item.fornecedorCotado) : '—')+'</td>'
+      + '<td style="padding:8px;color:#f59e0b">'+fmtBRL(getItemValorCotado(item))+'</td>'
+      + '<td style="padding:8px">'+(item.fornecedorComprado ? escapeHTML(item.fornecedorComprado) : '—')+'</td>'
+      + '<td style="padding:8px;color:#00a99d">'+fmtBRL(getItemValorNegociado(item))+'</td>'
+      + '<td style="padding:8px"><strong style="color:'+cor+'">'+fmtBRL(saving)+'</strong></td>'
+      + '<td style="padding:8px;color:var(--muted)">'+(item.obsNegociacao ? escapeHTML(item.obsNegociacao) : '—')+'</td>'
+      + '</tr>';
+  }).join('');
+
+  return '<div id="resumo-saving-item" style="margin-top:18px;background:rgba(0,169,157,0.06);border:1px solid rgba(0,169,157,0.18);border-radius:12px;padding:16px">'
+    + '<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px">'
+    + '<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">💰 Saving por item</div>'
+    + '<div style="font-size:13px"><strong>Cotado:</strong> '+fmtBRL(p.valorCotacao)+' · <strong>Comprado:</strong> '+fmtBRL(p.valorPago)+' · <strong style="color:#059669">Saving: '+fmtBRL(p.saving)+'</strong></div>'
+    + '</div>'
+    + '<div class="data-table-wrap"><table style="width:100%;font-size:13px"><thead><tr><th>Item</th><th>Fornecedor cotado</th><th>Valor cotado</th><th>Fornecedor comprado</th><th>Valor comprado</th><th>Saving</th><th>Observação</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
+    + '</div>';
+}
+
+function injectResumoSavingPorItem(sc) {
+  const p = pedidos.find(x => x.sc === sc);
+  const modal = document.getElementById('modal-content');
+  if (!p || !modal || !pedidoTemFinanceiroPorItem(p) || document.getElementById('resumo-saving-item')) return;
+  const html = buildResumoSavingPorItem(p);
+  const marker = modal.innerHTML.indexOf('<div class="card-title"><span>🗺</span> Acompanhamento</div>');
+  if (marker >= 0) {
+    modal.innerHTML = modal.innerHTML.slice(0, marker) + html + modal.innerHTML.slice(marker);
+  } else {
+    modal.insertAdjacentHTML('beforeend', html);
+  }
+}
+
+function injectEditorSavingPorItem(sc) {
+  const p = pedidos.find(x => x.sc === sc);
+  const modal = document.getElementById('modal-content');
+  if (!p || !modal || document.getElementById('saving-item-editor')) return;
+  const html = '<div class="card-title" style="margin-top:18px"><span>💰</span> Saving por item</div>' + buildSavingPorItemEditor(p, 'editor');
+  const marker = '<div class="card-title" style="margin-top:18px"><span>📦</span> Recebimentos e múltiplas NFs</div>';
+  const idx = modal.innerHTML.indexOf(marker);
+  if (idx >= 0) modal.innerHTML = modal.innerHTML.slice(0, idx) + html + modal.innerHTML.slice(idx);
+  else modal.insertAdjacentHTML('beforeend', html);
+}
+
+function getLinhasSavingDetalhado(tipo) {
+  const linhas = [];
+  pedidos.forEach(p => {
+    recalcPedidoFinanceiroPorItem(p);
+    if (pedidoTemFinanceiroPorItem(p)) {
+      (p.itens || []).forEach(item => {
+        if (!itemTemFinanceiro(item)) return;
+        const base = tipo === 'ref' ? parseQtd(p.valorRef) : getItemValorCotado(item);
+        const pago = getItemValorNegociado(item);
+        const saving = tipo === 'ref' ? 0 : getItemSavingValue(item);
+        if (tipo === 'ref') return; // referência continua por pedido, pois hoje não existe referência por item.
+        if (saving <= 0) return;
+        linhas.push({ p, item, base, pago, saving, pct: base > 0 ? saving / base * 100 : 0, porItem: true });
+      });
+    } else {
+      const saving = tipo === 'cotacao' ? parseQtd(p.saving) : parseQtd(p.savingRef);
+      const base = tipo === 'cotacao' ? parseQtd(p.valorCotacao) : parseQtd(p.valorRef);
+      const pago = parseQtd(p.valorPago);
+      if (saving > 0) linhas.push({ p, item: null, base, pago, saving, pct: base > 0 ? saving / base * 100 : 0, porItem: false });
+    }
+  });
+  return linhas.sort((a,b) => b.saving - a.saving);
+}
+
+function openSavingModal(tipo) {
+  const linhas = getLinhasSavingDetalhado(tipo);
+  const totalS = linhas.reduce((s,l) => s + l.saving, 0);
+  const titulo = tipo === 'cotacao' ? 'Saving: Cotação → Pago' : 'Saving: Referência → Pago';
+  const cor = tipo === 'cotacao' ? '#34d399' : '#60a5fa';
+
+  const rows = linhas.map(l => {
+    return '<tr class="clickable" onclick="closeModal();setTimeout(()=>openModal(\'' + escapeHTML(l.p.sc) + '\'),100)">'
+      + '<td><strong style="color:var(--accent)">'+escapeHTML(l.p.sc)+'</strong></td>'
+      + '<td>'+escapeHTML(l.p.empresa||'—')+'</td>'
+      + '<td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escapeHTML(l.item ? l.item.descricao : ((l.p.itens&&l.p.itens[0]?.descricao)||''))+'">'+escapeHTML(l.item ? l.item.descricao : ((l.p.itens&&l.p.itens[0]?.descricao)||'Pedido'))+'</td>'
+      + '<td>'+escapeHTML(l.item?.fornecedorCotado || l.p.fornecedorEsc || l.p.fornecedorSug || '—')+'</td>'
+      + '<td>'+escapeHTML(l.item?.fornecedorComprado || l.p.fornecedorEsc || '—')+'</td>'
+      + '<td style="color:var(--muted)">'+fmtBRL(l.base)+'</td>'
+      + '<td style="color:var(--muted)">'+fmtBRL(l.pago)+'</td>'
+      + '<td><strong style="color:'+cor+'">'+fmtBRL(l.saving)+'</strong></td>'
+      + '<td style="color:'+cor+'">'+fmtPct(l.pct)+'</td>'
+      + '</tr>';
+  }).join('');
+
+  document.getElementById('modal-content').innerHTML = `
+    <div class="modal-header">
+      <div>
+        <div style="font-family:'Inter',sans-serif;font-size:20px;font-weight:700">📉 ${titulo}</div>
+        <div style="color:var(--muted);font-size:13px;margin-top:4px">${linhas.length} linha${linhas.length !== 1 ? 's' : ''} com saving registrado ${tipo === 'cotacao' ? '(pedido ou item)' : ''}</div>
+      </div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
+      <div style="background:rgba(52,211,153,0.08);border:1px solid rgba(52,211,153,0.2);border-radius:10px;padding:16px;text-align:center">
+        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">Total Economizado</div>
+        <div style="font-size:24px;font-weight:700;font-family:'Inter',sans-serif;color:${cor}">${fmtBRL(totalS)}</div>
+      </div>
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center">
+        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">Linhas com Saving</div>
+        <div style="font-size:24px;font-weight:700;font-family:'Inter',sans-serif;color:var(--text)">${linhas.length}</div>
+      </div>
+    </div>
+    <div style="overflow-x:auto">
+      <table style="width:100%;font-size:13px;border-collapse:collapse">
+        <thead><tr><th>SC</th><th>Empresa</th><th>Item</th><th>Forn. cotado</th><th>Forn. comprado</th><th>${tipo === 'cotacao' ? 'Cotado' : 'Referência'}</th><th>Comprado</th><th>Saving</th><th>%</th></tr></thead>
+        <tbody>${rows || '<tr><td colspan="9" style="padding:20px;text-align:center;color:var(--muted)">Nenhum saving registrado ainda.</td></tr>'}</tbody>
+      </table>
+    </div>
+    <div style="margin-top:16px;text-align:right"><button class="btn btn-secondary" onclick="closeModal()">Fechar</button></div>
+  `;
+  document.getElementById('modal-overlay').classList.add('open');
+}
