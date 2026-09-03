@@ -3977,3 +3977,505 @@ function openSavingModal(tipo) {
   `;
   document.getElementById('modal-overlay').classList.add('open');
 }
+
+// =========================================================
+// v1.1.7 — EXIBIR NEGOCIAÇÃO POR ITEM NO ATUALIZAR STATUS
+// =========================================================
+(function initV117SavingNoAtualizarStatus(){
+  if (window._v117_savingStatusInstalled) return;
+  window._v117_savingStatusInstalled = true;
+
+  function hideLegacyFinanceFields(next) {
+    const hideGroup = (id) => {
+      const el = document.getElementById(id);
+      const group = el && el.closest ? el.closest('.form-group') : null;
+      if (group) group.style.display = 'none';
+    };
+    if (next === 'Cotação') {
+      hideGroup('us-fornecedor');
+      hideGroup('us-cotacao');
+    }
+    if (next === 'Pedido de Compra') {
+      hideGroup('us-valorpago');
+    }
+  }
+
+  function v117FmtBRL(v) {
+    if (typeof fmtBRL === 'function') return fmtBRL(v);
+    const n = Number(v || 0);
+    return 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function v117Parse(v) {
+    if (typeof parseQtd === 'function') return parseQtd(v);
+    if (v === null || v === undefined || v === '') return 0;
+    return parseFloat(String(v).replace(',', '.')) || 0;
+  }
+
+  function v117Escape(v) {
+    if (typeof escapeHTML === 'function') return escapeHTML(v);
+    return String(v ?? '').replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));
+  }
+
+  function v117GetQtd(item) {
+    if (typeof getItemQtd === 'function') return getItemQtd(item);
+    return v117Parse(item && (item.qtd ?? item.quantidade ?? item.qtdSolicitada));
+  }
+
+  function v117ValorCotado(item) {
+    return v117Parse(item && (item.valorCotadoItem ?? item.valorCotado ?? 0));
+  }
+
+  function v117ValorComprado(item) {
+    return v117Parse(item && (item.valorNegociadoItem ?? item.valorNegociado ?? 0));
+  }
+
+  function v117Saving(item) {
+    const cotado = v117ValorCotado(item);
+    const comprado = v117ValorComprado(item);
+    if (!cotado && !comprado) return 0;
+    return cotado - comprado;
+  }
+
+  function v117NormalizaPedido(p) {
+    if (!p) return p;
+    if (typeof normalizePedidoItems === 'function') p = normalizePedidoItems(p);
+    if (!Array.isArray(p.itens)) p.itens = [];
+    p.itens.forEach(item => {
+      if (item.fornecedorCotado === undefined) item.fornecedorCotado = '';
+      if (item.fornecedorComprado === undefined) item.fornecedorComprado = '';
+      if (item.valorCotadoItem === undefined && item.valorCotado !== undefined) item.valorCotadoItem = item.valorCotado;
+      if (item.valorNegociadoItem === undefined && item.valorNegociado !== undefined) item.valorNegociadoItem = item.valorNegociado;
+      if (item.obsNegociacao === undefined) item.obsNegociacao = '';
+      item.savingItem = v117Saving(item);
+    });
+    return p;
+  }
+
+  function v117BuildStatusFinanceiro(p, next) {
+    p = v117NormalizaPedido(p);
+    if (!p || !Array.isArray(p.itens) || !['Cotação','Pedido de Compra'].includes(next)) return '';
+
+    const isCotacao = next === 'Cotação';
+    const titulo = isCotacao ? '💬 Cotação por item' : '📝 Negociação / Compra por item';
+    const ajuda = isCotacao
+      ? 'Preencha o fornecedor cotado e o valor cotado de cada item. O valor geral da cotação será calculado automaticamente.'
+      : 'Preencha o fornecedor comprado e o valor negociado de cada item. O saving será calculado automaticamente por item e somado no KPI.';
+
+    const rows = p.itens.map((item, idx) => {
+      const qtd = v117GetQtd(item);
+      const desc = v117Escape(item.descricao || 'Item ' + (idx + 1));
+      const unidade = v117Escape(item.unidade || '');
+      const ref = item.ref ? ' · Ref: ' + v117Escape(item.ref) : '';
+
+      if (isCotacao) {
+        return '<tr>'
+          + '<td style="padding:8px;min-width:210px"><strong>' + desc + '</strong><div style="font-size:11px;color:var(--muted)">Qtd: ' + qtd + ' ' + unidade + ref + '</div></td>'
+          + '<td style="padding:8px"><input class="v117-forn-cotado" data-idx="' + idx + '" value="' + v117Escape(item.fornecedorCotado || '') + '" placeholder="Fornecedor cotado" style="width:170px"></td>'
+          + '<td style="padding:8px"><input class="v117-valor-cotado" data-idx="' + idx + '" type="number" step="0.01" min="0" value="' + (v117ValorCotado(item) || '') + '" placeholder="0,00" style="width:120px" oninput="v117AtualizarPreviewSaving()"></td>'
+          + '<td style="padding:8px"><input class="v117-obs-neg" data-idx="' + idx + '" value="' + v117Escape(item.obsNegociacao || '') + '" placeholder="Ex.: cotado no fornecedor X" style="width:220px"></td>'
+          + '</tr>';
+      }
+
+      return '<tr>'
+        + '<td style="padding:8px;min-width:210px"><strong>' + desc + '</strong><div style="font-size:11px;color:var(--muted)">Qtd: ' + qtd + ' ' + unidade + ref + '</div></td>'
+        + '<td style="padding:8px"><input class="v117-forn-cotado" data-idx="' + idx + '" value="' + v117Escape(item.fornecedorCotado || '') + '" placeholder="Fornecedor cotado" style="width:150px"></td>'
+        + '<td style="padding:8px"><input class="v117-valor-cotado" data-idx="' + idx + '" type="number" step="0.01" min="0" value="' + (v117ValorCotado(item) || '') + '" placeholder="0,00" style="width:105px" oninput="v117AtualizarPreviewSaving()"></td>'
+        + '<td style="padding:8px"><input class="v117-forn-comprado" data-idx="' + idx + '" value="' + v117Escape(item.fornecedorComprado || '') + '" placeholder="Fornecedor comprado" style="width:150px"></td>'
+        + '<td style="padding:8px"><input class="v117-valor-comprado" data-idx="' + idx + '" type="number" step="0.01" min="0" value="' + (v117ValorComprado(item) || '') + '" placeholder="0,00" style="width:105px" oninput="v117AtualizarPreviewSaving()"></td>'
+        + '<td style="padding:8px"><input class="v117-obs-neg" data-idx="' + idx + '" value="' + v117Escape(item.obsNegociacao || '') + '" placeholder="Motivo / detalhe" style="width:180px"></td>'
+        + '<td style="padding:8px"><strong class="v117-saving-preview" data-idx="' + idx + '" style="color:#059669">' + v117FmtBRL(v117Saving(item)) + '</strong></td>'
+        + '</tr>';
+    }).join('');
+
+    const header = isCotacao
+      ? '<th>Item</th><th>Fornecedor cotado</th><th>Valor cotado</th><th>Observação da cotação</th>'
+      : '<th>Item</th><th>Fornecedor cotado</th><th>Valor cotado</th><th>Fornecedor comprado</th><th>Valor comprado</th><th>Observação</th><th>Saving</th>';
+
+    return '<div id="v117-saving-status" style="background:rgba(0,169,157,0.06);border:1px solid rgba(0,169,157,0.22);border-radius:12px;padding:16px;margin-bottom:14px">'
+      + '<div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;margin-bottom:10px">'
+      + '<div><div style="font-family:Inter,sans-serif;font-weight:700;color:var(--accent2)">' + titulo + '</div>'
+      + '<div style="font-size:12px;color:var(--muted);margin-top:3px">' + ajuda + '</div></div>'
+      + '<div id="v117-saving-total" style="font-size:12px;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 10px">Total será calculado ao confirmar</div>'
+      + '</div>'
+      + '<div class="data-table-wrap"><table style="width:100%;font-size:13px"><thead><tr>' + header + '</tr></thead><tbody>' + rows + '</tbody></table></div>'
+      + '<div style="font-size:12px;color:var(--muted);margin-top:10px">Os campos gerais de valor serão preenchidos automaticamente com a soma dos itens.</div>'
+      + '</div>';
+  }
+
+  window.v117AtualizarPreviewSaving = function() {
+    let totalCotado = 0;
+    let totalComprado = 0;
+    document.querySelectorAll('.v117-valor-cotado').forEach(el => totalCotado += v117Parse(el.value));
+    document.querySelectorAll('.v117-valor-comprado').forEach(el => totalComprado += v117Parse(el.value));
+
+    document.querySelectorAll('.v117-saving-preview').forEach(span => {
+      const idx = span.dataset.idx;
+      const cot = v117Parse(document.querySelector('.v117-valor-cotado[data-idx="' + idx + '"]')?.value);
+      const cmp = v117Parse(document.querySelector('.v117-valor-comprado[data-idx="' + idx + '"]')?.value);
+      const sv = cot - cmp;
+      span.textContent = v117FmtBRL(sv);
+      span.style.color = sv >= 0 ? '#059669' : '#dc2626';
+    });
+
+    const totalEl = document.getElementById('v117-saving-total');
+    if (totalEl) {
+      const saving = totalCotado - totalComprado;
+      if (totalComprado) {
+        totalEl.innerHTML = '<strong>Cotado:</strong> ' + v117FmtBRL(totalCotado) + ' · <strong>Comprado:</strong> ' + v117FmtBRL(totalComprado) + ' · <strong style="color:' + (saving >= 0 ? '#059669' : '#dc2626') + '">Saving: ' + v117FmtBRL(saving) + '</strong>';
+      } else {
+        totalEl.innerHTML = '<strong>Total cotado:</strong> ' + v117FmtBRL(totalCotado);
+      }
+    }
+  };
+
+  function v117InjectSavingStatus(next) {
+    const sc = window._currentUpdateSC;
+    const p = pedidos.find(x => x.sc === sc);
+    const container = document.getElementById('status-extra-fields');
+    if (!p || !container || !['Cotação','Pedido de Compra'].includes(next)) return;
+
+    const oldV117 = document.getElementById('v117-saving-status');
+    if (oldV117) oldV117.remove();
+    const oldV116 = document.getElementById('saving-item-editor');
+    if (oldV116) oldV116.remove();
+
+    hideLegacyFinanceFields(next);
+
+    const html = v117BuildStatusFinanceiro(p, next);
+    container.insertAdjacentHTML('afterbegin', html);
+    setTimeout(window.v117AtualizarPreviewSaving, 0);
+  }
+
+  function v117ApplyInputs(p) {
+    if (!p || !Array.isArray(p.itens) || !document.getElementById('v117-saving-status')) return false;
+
+    document.querySelectorAll('.v117-forn-cotado').forEach(el => {
+      const item = p.itens[parseInt(el.dataset.idx, 10)];
+      if (item) item.fornecedorCotado = el.value.trim();
+    });
+    document.querySelectorAll('.v117-valor-cotado').forEach(el => {
+      const item = p.itens[parseInt(el.dataset.idx, 10)];
+      if (item) item.valorCotadoItem = v117Parse(el.value);
+    });
+    document.querySelectorAll('.v117-forn-comprado').forEach(el => {
+      const item = p.itens[parseInt(el.dataset.idx, 10)];
+      if (item) item.fornecedorComprado = el.value.trim();
+    });
+    document.querySelectorAll('.v117-valor-comprado').forEach(el => {
+      const item = p.itens[parseInt(el.dataset.idx, 10)];
+      if (item) item.valorNegociadoItem = v117Parse(el.value);
+    });
+    document.querySelectorAll('.v117-obs-neg').forEach(el => {
+      const item = p.itens[parseInt(el.dataset.idx, 10)];
+      if (item) item.obsNegociacao = el.value.trim();
+    });
+
+    let totalCotado = 0;
+    let totalComprado = 0;
+    p.itens.forEach(item => {
+      item.savingItem = v117Saving(item);
+      totalCotado += v117ValorCotado(item);
+      totalComprado += v117ValorComprado(item);
+    });
+
+    if (totalCotado > 0) p.valorCotacao = totalCotado;
+    if (totalComprado > 0) p.valorPago = totalComprado;
+    if (totalCotado > 0 && totalComprado > 0) p.saving = totalCotado - totalComprado;
+    if (p.valorRef && totalComprado > 0) p.savingRef = v117Parse(p.valorRef) - totalComprado;
+
+    const cot = document.getElementById('us-cotacao');
+    const pago = document.getElementById('us-valorpago');
+    const forn = document.getElementById('us-fornecedor');
+    if (cot && totalCotado > 0) cot.value = String(totalCotado.toFixed(2));
+    if (pago && totalComprado > 0) pago.value = String(totalComprado.toFixed(2));
+    if (forn && p.itens[0] && p.itens[0].fornecedorCotado) forn.value = p.itens[0].fornecedorCotado;
+
+    return true;
+  }
+
+  // Envolve o seletor de status mais uma vez, agora com injeção direta e atraso curto.
+  if (typeof selectStatusOption === 'function' && !window._v117_selectStatusWrapped) {
+    window._v117_selectStatusWrapped = true;
+    const _previousSelectStatusOption = selectStatusOption;
+    selectStatusOption = function(el, next) {
+      const r = _previousSelectStatusOption.apply(this, arguments);
+      setTimeout(() => v117InjectSavingStatus(next), 0);
+      setTimeout(() => v117InjectSavingStatus(next), 80);
+      return r;
+    };
+  }
+
+  if (typeof confirmUpdateStatus === 'function' && !window._v117_confirmStatusWrapped) {
+    window._v117_confirmStatusWrapped = true;
+    const _previousConfirmUpdateStatus = confirmUpdateStatus;
+    confirmUpdateStatus = function() {
+      const sc = window._currentUpdateSC;
+      const p = pedidos.find(x => x.sc === sc);
+      if (p) v117ApplyInputs(p);
+      return _previousConfirmUpdateStatus.apply(this, arguments);
+    };
+  }
+})();
+
+// =========================================================
+// v1.1.8 — LOGIN UNIFICADO POR PERFIL
+// =========================================================
+// Um único botão/modal identifica automaticamente o perfil pela senha.
+
+function updateUnifiedLoginButton() {
+  const btn = document.getElementById('btn-login');
+  const icon = document.getElementById('login-icon');
+  const label = document.getElementById('login-label');
+  if (!btn || !icon || !label) return;
+
+  if (window.compradorMode) {
+    btn.style.background = 'linear-gradient(135deg,#003a70,#005a9e)';
+    btn.style.color = '#fff';
+    btn.style.borderColor = '#003a70';
+    icon.textContent = '🔓';
+    label.textContent = 'Comprador Ativo';
+    btn.title = 'Clique para sair';
+  } else if (window.almoxarifeMode) {
+    btn.style.background = 'linear-gradient(135deg,#7c3aed,#9333ea)';
+    btn.style.color = '#fff';
+    btn.style.borderColor = '#7c3aed';
+    icon.textContent = '🔓';
+    label.textContent = 'Almoxarife Ativo';
+    btn.title = 'Clique para sair';
+  } else {
+    btn.style.background = 'transparent';
+    btn.style.color = '#003a70';
+    btn.style.borderColor = '#003a70';
+    icon.textContent = '🔐';
+    label.textContent = 'Login';
+    btn.title = 'Entrar no sistema';
+  }
+}
+
+function openLoginModal() {
+  const overlay = document.getElementById('login-overlay');
+  const input = document.getElementById('login-pwd-input');
+  const error = document.getElementById('login-pwd-error');
+  if (!overlay || !input || !error) return;
+  input.value = '';
+  error.textContent = '';
+  input.style.borderColor = '#d1dbe8';
+  overlay.style.display = 'flex';
+  setTimeout(() => input.focus(), 100);
+}
+
+function closeLoginModal(clearPending = true) {
+  const overlay = document.getElementById('login-overlay');
+  if (overlay) overlay.style.display = 'none';
+  if (clearPending) {
+    window._pendingTab = null;
+    window._pendingAlmoxTab = null;
+  }
+}
+
+function enableCompradorMode() {
+  window.compradorMode = true;
+  window.almoxarifeMode = false;
+
+  ['painel','config'].forEach(tab => {
+    const btn = document.getElementById('nav-' + tab);
+    if (!btn) return;
+    btn.classList.remove('locked');
+    btn.setAttribute('onclick', `switchTab('${tab}')`);
+    const lock = btn.querySelector('.lock-icon');
+    if (lock) lock.textContent = '';
+  });
+
+  const rec = document.getElementById('nav-recebimentos');
+  if (rec) {
+    rec.classList.remove('locked');
+    rec.setAttribute('onclick', "switchTab('recebimentos')");
+    const lock = rec.querySelector('.lock-icon');
+    if (lock) lock.textContent = '';
+  }
+
+  const ld = document.getElementById('btn-lancamento-direto');
+  if (ld) ld.style.display = 'flex';
+  const btnKpiC = document.getElementById('btn-kpi-compras');
+  if (btnKpiC) btnKpiC.style.display = '';
+
+  updateUnifiedLoginButton();
+  try { addRecebimentosNavAccess(); } catch(e) {}
+  toast('✔ Login realizado como Comprador', 'success');
+}
+
+function enableAlmoxarifeMode() {
+  window.almoxarifeMode = true;
+  window.compradorMode = false;
+
+  // Recebimentos liberado.
+  const rec = document.getElementById('nav-recebimentos');
+  if (rec) {
+    rec.classList.remove('locked');
+    rec.setAttribute('onclick', "switchTab('recebimentos')");
+    const lock = rec.querySelector('.lock-icon');
+    if (lock) lock.textContent = '';
+  }
+
+  // Painel liberado, mas somente na visão do Almoxarifado.
+  const painel = document.getElementById('nav-painel');
+  if (painel) {
+    painel.classList.remove('locked');
+    painel.setAttribute('onclick', "requireComprador('painel')");
+    const lock = painel.querySelector('.lock-icon');
+    if (lock) lock.textContent = '';
+  }
+
+  // Configuração continua restrita ao comprador.
+  const config = document.getElementById('nav-config');
+  if (config) {
+    config.classList.add('locked');
+    config.setAttribute('onclick', "requireComprador('config')");
+    const lock = config.querySelector('.lock-icon');
+    if (lock) lock.textContent = '🔒';
+  }
+
+  const ld = document.getElementById('btn-lancamento-direto');
+  if (ld) ld.style.display = 'none';
+  const btnKpiC = document.getElementById('btn-kpi-compras');
+  if (btnKpiC) btnKpiC.style.display = 'none';
+
+  updateUnifiedLoginButton();
+  try { addRecebimentosNavAccess(); } catch(e) {}
+  toast('✔ Login realizado como Almoxarife', 'success');
+}
+
+function logoutUnified() {
+  const wasComprador = window.compradorMode;
+  const wasAlmox = window.almoxarifeMode;
+  window.compradorMode = false;
+  window.almoxarifeMode = false;
+  window._pendingTab = null;
+  window._pendingAlmoxTab = null;
+
+  ['painel','config'].forEach(tab => {
+    const btn = document.getElementById('nav-' + tab);
+    if (!btn) return;
+    btn.classList.add('locked');
+    btn.setAttribute('onclick', `requireComprador('${tab}')`);
+    const lock = btn.querySelector('.lock-icon');
+    if (lock) lock.textContent = '🔒';
+  });
+
+  const rec = document.getElementById('nav-recebimentos');
+  if (rec) {
+    rec.classList.add('locked');
+    rec.setAttribute('onclick', "requireAlmoxarife('recebimentos')");
+    const lock = rec.querySelector('.lock-icon');
+    if (lock) lock.textContent = '🔒';
+  }
+
+  const ld = document.getElementById('btn-lancamento-direto');
+  if (ld) ld.style.display = 'none';
+  const btnKpiC = document.getElementById('btn-kpi-compras');
+  if (btnKpiC) btnKpiC.style.display = '';
+
+  const activePane = document.querySelector('.tab-pane.active');
+  const restricted = ['painel','config','recebimentos'];
+  if (activePane && restricted.includes(activePane.id.replace('tab-',''))) {
+    switchTabDirect('solicitar');
+  }
+
+  updateUnifiedLoginButton();
+  try { addRecebimentosNavAccess(); } catch(e) {}
+  if (wasComprador || wasAlmox) toast('Sessão encerrada', 'success');
+}
+
+function toggleLogin() {
+  if (window.compradorMode || window.almoxarifeMode) {
+    logoutUnified();
+  } else {
+    openLoginModal();
+  }
+}
+
+function checkUnifiedLogin() {
+  const input = document.getElementById('login-pwd-input');
+  const error = document.getElementById('login-pwd-error');
+  if (!input || !error) return;
+  const val = input.value;
+  const pendingCompras = window._pendingTab;
+  const pendingAlmox = window._pendingAlmoxTab;
+
+  if (val === COMPRADOR_PASSWORD) {
+    closeLoginModal(false);
+    enableCompradorMode();
+    window._pendingTab = null;
+    window._pendingAlmoxTab = null;
+    const destino = pendingCompras || pendingAlmox;
+    if (destino) switchTabDirect(destino);
+    return;
+  }
+
+  if (val === ALMOXARIFE_PASSWORD) {
+    closeLoginModal(false);
+    enableAlmoxarifeMode();
+    window._pendingTab = null;
+    window._pendingAlmoxTab = null;
+
+    if (pendingAlmox) {
+      switchTabDirect(pendingAlmox);
+    } else if (pendingCompras === 'painel') {
+      switchTabDirect('painel');
+      setTimeout(() => {
+        try { switchKPI('almox'); } catch(e) {}
+        const btnC = document.getElementById('btn-kpi-compras');
+        if (btnC) btnC.style.display = 'none';
+      }, 50);
+    } else if (pendingCompras) {
+      toast('Este acesso é exclusivo do perfil Comprador.', 'error');
+    }
+    return;
+  }
+
+  error.textContent = 'Senha inválida. Verifique e tente novamente.';
+  input.value = '';
+  input.style.borderColor = '#dc2626';
+  input.focus();
+  setTimeout(() => input.style.borderColor = '#d1dbe8', 1200);
+}
+
+// As áreas bloqueadas agora usam o mesmo modal de login.
+function requireComprador(tab) {
+  if (window.compradorMode) { switchTab(tab); return; }
+  if (window.almoxarifeMode && tab === 'painel') {
+    switchTab('painel');
+    setTimeout(() => {
+      try { switchKPI('almox'); } catch(e) {}
+      const btnCompras = document.getElementById('btn-kpi-compras');
+      if (btnCompras) btnCompras.style.display = 'none';
+    }, 50);
+    return;
+  }
+  window._pendingTab = tab;
+  window._pendingAlmoxTab = null;
+  openLoginModal();
+}
+
+function requireAlmoxarife(tab) {
+  if (window.almoxarifeMode || window.compradorMode) {
+    switchTab(tab);
+    return;
+  }
+  window._pendingAlmoxTab = tab;
+  window._pendingTab = null;
+  openLoginModal();
+}
+
+// Compatibilidade com chamadas antigas ainda existentes no arquivo.
+function openPwdModal() { openLoginModal(); }
+function closePwdModal() { closeLoginModal(); }
+function checkPassword() { checkUnifiedLogin(); }
+function toggleModoComprador() { toggleLogin(); }
+function closeAlmPwdModal() { closeLoginModal(); }
+function checkAlmoxarifePassword() { checkUnifiedLogin(); }
+function toggleModoAlmoxarife() { toggleLogin(); }
+
+// Garante o estado correto do botão ao carregar.
+document.addEventListener('DOMContentLoaded', updateUnifiedLoginButton);
