@@ -4479,3 +4479,367 @@ function toggleModoAlmoxarife() { toggleLogin(); }
 
 // Garante o estado correto do botão ao carregar.
 document.addEventListener('DOMContentLoaded', updateUnifiedLoginButton);
+
+
+// =========================================================
+// v1.2.0 — LOGIN INICIAL + AUTOCADASTRO DE SOLICITANTE
+// =========================================================
+const KV_AUTH_STORAGE = 'kv_auth_session_v120';
+const KV_ROLE_STORAGE = 'kv_access_role_v120';
+window.kvAuthUser = null;
+window.kvAccessRole = null; // solicitante | comprador | almoxarife
+
+function kvNormalizeSector(v) { return String(v || '').trim(); }
+
+function kvDisplayNameFromEmail(email) {
+  const local = String(email || '').split('@')[0].replace(/[._-]+/g, ' ').trim();
+  if (!local) return 'Solicitante';
+  return local.split(/\\s+/).map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()).join(' ');
+}
+
+function kvCurrentSector() {
+  if (window.kvAccessRole !== 'solicitante') return '';
+  return kvNormalizeSector(window.kvAuthUser?.user_metadata?.departamento || window.kvAuthUser?.user_metadata?.setor || '');
+}
+
+function kvIsVisiblePedido(p) {
+  if (!p) return false;
+  if (window.kvAccessRole === 'comprador' || window.kvAccessRole === 'almoxarife') return true;
+  if (window.kvAccessRole !== 'solicitante') return false;
+  return kvNormalizeSector(p.departamento).toLocaleLowerCase('pt-BR') === kvCurrentSector().toLocaleLowerCase('pt-BR');
+}
+
+function kvVisiblePedidos() { return (pedidos || []).filter(kvIsVisiblePedido); }
+
+function showSignupView() {
+  document.getElementById('auth-login-view').style.display = 'none';
+  document.getElementById('auth-signup-view').style.display = '';
+  document.getElementById('auth-signup-error').textContent = '';
+  setTimeout(() => document.getElementById('signup-email')?.focus(), 50);
+}
+
+function showLoginView() {
+  document.getElementById('auth-signup-view').style.display = 'none';
+  document.getElementById('auth-login-view').style.display = '';
+  document.getElementById('auth-login-error').textContent = '';
+  setTimeout(() => document.getElementById('auth-user')?.focus(), 50);
+}
+
+function kvShowGate() {
+  document.body.classList.add('auth-locked');
+  document.getElementById('auth-gate')?.classList.remove('hidden');
+  showLoginView();
+}
+
+function kvHideGate() {
+  document.body.classList.remove('auth-locked');
+  document.getElementById('auth-gate')?.classList.add('hidden');
+}
+
+function kvSaveSupabaseSession(payload) {
+  if (!payload) return;
+  const data = {
+    access_token: payload.access_token || '',
+    refresh_token: payload.refresh_token || '',
+    expires_at: Math.floor(Date.now()/1000) + Number(payload.expires_in || 3600),
+    user: payload.user || null
+  };
+  localStorage.setItem(KV_AUTH_STORAGE, JSON.stringify(data));
+}
+
+function kvClearSession() {
+  localStorage.removeItem(KV_AUTH_STORAGE);
+  sessionStorage.removeItem(KV_ROLE_STORAGE);
+  window.kvAuthUser = null;
+  window.kvAccessRole = null;
+  window.compradorMode = false;
+  window.almoxarifeMode = false;
+}
+
+async function kvAuthFetch(path, body, bearer) {
+  const headers = {'Content-Type':'application/json','apikey':SUPA_KEY};
+  if (bearer) headers.Authorization = 'Bearer ' + bearer;
+  const res = await fetch(SUPA_URL + path, {method:'POST', headers, body: body ? JSON.stringify(body) : undefined});
+  let data = {};
+  try { data = await res.json(); } catch(e) {}
+  if (!res.ok) {
+    const msg = data?.msg || data?.message || data?.error_description || data?.error || ('HTTP ' + res.status);
+    throw new Error(msg);
+  }
+  return data;
+}
+
+async function signupSolicitante() {
+  const email = (document.getElementById('signup-email')?.value || '').trim().toLowerCase();
+  const password = document.getElementById('signup-password')?.value || '';
+  const setor = kvNormalizeSector(document.getElementById('signup-sector')?.value);
+  const err = document.getElementById('auth-signup-error');
+  err.textContent = '';
+  if (!email || !email.includes('@')) { err.textContent = 'Informe um e-mail corporativo válido.'; return; }
+  if (password.length < 6) { err.textContent = 'A senha precisa ter pelo menos 6 caracteres.'; return; }
+  if (!setor) { err.textContent = 'Selecione o seu setor.'; return; }
+
+  try {
+    const data = await kvAuthFetch('/auth/v1/signup', {
+      email, password,
+      data: { departamento: setor, setor: setor }
+    });
+    if (data.access_token && data.user) {
+      kvSaveSupabaseSession(data);
+      await kvEnterSolicitante(data.user);
+      toast('✔ Cadastro realizado com sucesso!', 'success');
+    } else {
+      err.textContent = 'Cadastro criado. Se o Supabase solicitar confirmação de e-mail, confirme a mensagem recebida e depois faça o login.';
+      document.getElementById('auth-user').value = email;
+      document.getElementById('auth-password').value = '';
+      setTimeout(showLoginView, 3500);
+    }
+  } catch(e) {
+    const m = String(e.message || e);
+    err.textContent = /already|registered|exists/i.test(m) ? 'Este e-mail já possui cadastro. Volte para o login.' : ('Não foi possível cadastrar: ' + m);
+  }
+}
+
+async function loginFromGate() {
+  const user = (document.getElementById('auth-user')?.value || '').trim();
+  const password = document.getElementById('auth-password')?.value || '';
+  const err = document.getElementById('auth-login-error');
+  err.textContent = '';
+  if (!user || !password) { err.textContent = 'Informe o usuário/e-mail e a senha.'; return; }
+
+  const upper = user.toUpperCase();
+  if (upper === 'COMPRADOR') {
+    if (password !== COMPRADOR_PASSWORD) { err.textContent = 'Senha incorreta para COMPRADOR.'; return; }
+    sessionStorage.setItem(KV_ROLE_STORAGE, 'comprador');
+    await kvEnterInternalRole('comprador');
+    return;
+  }
+  if (upper === 'ALMOXARIFE') {
+    if (password !== ALMOXARIFE_PASSWORD) { err.textContent = 'Senha incorreta para ALMOXARIFE.'; return; }
+    sessionStorage.setItem(KV_ROLE_STORAGE, 'almoxarife');
+    await kvEnterInternalRole('almoxarife');
+    return;
+  }
+
+  try {
+    const data = await kvAuthFetch('/auth/v1/token?grant_type=password', {email:user.toLowerCase(), password});
+    kvSaveSupabaseSession(data);
+    await kvEnterSolicitante(data.user);
+  } catch(e) {
+    err.textContent = 'E-mail ou senha inválidos. Se acabou de se cadastrar, verifique se o e-mail precisa ser confirmado.';
+  }
+}
+
+async function kvEnterSolicitante(user) {
+  const setor = kvNormalizeSector(user?.user_metadata?.departamento || user?.user_metadata?.setor);
+  if (!setor) throw new Error('Seu cadastro não possui setor definido.');
+  window.kvAuthUser = user;
+  window.kvAccessRole = 'solicitante';
+  window.compradorMode = false;
+  window.almoxarifeMode = false;
+  sessionStorage.removeItem(KV_ROLE_STORAGE);
+  kvHideGate();
+  kvConfigureNavigationForRole();
+  kvApplySolicitanteIdentity();
+  await dbLoad();
+  renderPedidosTable();
+  renderProgramadasTable();
+  updateUnifiedLoginButton();
+}
+
+async function kvEnterInternalRole(role) {
+  window.kvAuthUser = null;
+  window.kvAccessRole = role;
+  kvHideGate();
+  if (role === 'comprador') enableCompradorMode();
+  else enableAlmoxarifeMode();
+  kvConfigureNavigationForRole();
+  await dbLoad();
+  renderPedidosTable();
+  renderProgramadasTable();
+  updateUnifiedLoginButton();
+}
+
+function kvConfigureNavigationForRole() {
+  const isSolic = window.kvAccessRole === 'solicitante';
+  ['nav-solicitar','nav-programadas','nav-pedidos'].forEach(id => {
+    const b=document.getElementById(id); if(b) b.style.display='';
+  });
+  if (isSolic) {
+    ['painel','config','recebimentos'].forEach(tab => {
+      const b=document.getElementById('nav-'+tab); if(!b) return;
+      b.classList.add('locked');
+      b.setAttribute('onclick', `kvRestrictedForSolicitante('${tab}')`);
+      const l=b.querySelector('.lock-icon'); if(l) l.textContent='🔒';
+    });
+    const ld=document.getElementById('btn-lancamento-direto'); if(ld) ld.style.display='none';
+  }
+}
+
+function kvRestrictedForSolicitante(tab) {
+  toast('Esta área é exclusiva dos perfis Comprador/Almoxarife.', 'error');
+}
+
+function kvApplySolicitanteIdentity() {
+  if (window.kvAccessRole !== 'solicitante' || !window.kvAuthUser) return;
+  const email = window.kvAuthUser.email || '';
+  const setor = kvCurrentSector();
+  const nome = kvDisplayNameFromEmail(email);
+  const sol = document.getElementById('f-solicitante');
+  const dep = document.getElementById('f-depto');
+  if (sol) { sol.value = nome; sol.readOnly = true; sol.title = email; sol.style.background='rgba(0,58,112,.04)'; }
+  if (dep) { dep.value = setor; dep.disabled = true; dep.style.background='rgba(0,58,112,.04)'; }
+}
+
+// Sobrescreve o carregamento: sem login não carrega dados; solicitante recebe apenas o próprio setor.
+async function dbLoad() {
+  if (!window.kvAccessRole) { pedidos = []; return true; }
+  try {
+    let url = SUPA_URL + '/rest/v1/pedidos?select=*&order=created_at.desc';
+    if (window.kvAccessRole === 'solicitante') {
+      const setor = kvCurrentSector();
+      url += '&departamento=eq.' + encodeURIComponent(setor);
+    }
+    const res = await fetch(url, { headers: SUPA_HEADERS });
+    if (!res.ok) throw new Error('HTTP ' + res.status + ': ' + await res.text());
+    pedidos = (await res.json() || []).map(fromDB);
+    updateExcelBadge(pedidos.length);
+    return true;
+  } catch(e) {
+    console.error('Supabase load error:', e.message);
+    const el=document.getElementById('excelStatus');
+    if(el){el.className='excel-badge disconnected';el.innerHTML='<div class="dot"></div><span>Erro: '+e.message+'</span>';}
+    return false;
+  }
+}
+
+// Garante que um solicitante não abra, nem por chamada manual, pedido de outro setor.
+const _kvOpenModalOriginal = openModal;
+openModal = function(sc) {
+  const p = pedidos.find(x => x.sc === sc);
+  if (window.kvAccessRole === 'solicitante' && !kvIsVisiblePedido(p)) { toast('Você não tem acesso a este pedido.', 'error'); return; }
+  return _kvOpenModalOriginal(sc);
+};
+
+// Busca do acompanhamento também respeita o setor.
+searchOrders = function() {
+  const q = (document.getElementById('searchInput')?.value || '').toLowerCase();
+  const container = document.getElementById('search-results');
+  if (!container) return;
+  if (!q) { container.innerHTML=''; return; }
+  const results = kvVisiblePedidos().filter(p =>
+    (p.sc||'').toLowerCase().includes(q) ||
+    (p.solicitante||'').toLowerCase().includes(q) ||
+    (p.itens||[]).some(i => (i.descricao||'').toLowerCase().includes(q)) ||
+    (p.fornecedorSug||'').toLowerCase().includes(q)
+  );
+  if (!results.length) { container.innerHTML='<div class="empty-state"><div class="icon">🔍</div><h3>Nenhum pedido encontrado</h3><p>Tente outro termo de busca</p></div>'; return; }
+  container.innerHTML = results.map(p => `
+    <div class="order-card" onclick="openModal('${p.sc}')">
+      <div class="order-card-header"><div><div style="display:flex;align-items:center;gap:8px"><div class="order-id">${p.sc}</div></div>
+      <div style="font-size:12px;color:var(--muted);margin-top:3px">${p.solicitante||'Solicitante'} · ${p.departamento||'—'}</div></div>
+      <span class="status-badge status-${statusKey(p.status)}">${p.status}</span></div>
+      <div class="order-meta"><div class="order-meta-item"><strong>Empresa:</strong> ${p.empresa||'—'}</div><div class="order-meta-item"><strong>Itens:</strong> ${(p.itens||[]).length}</div></div>
+    </div>`).join('');
+};
+
+// Tabelas: como dbLoad já traz apenas o setor do solicitante, mantemos as funções existentes,
+// mas filtramos novamente para proteção de interface caso algum dado seja inserido em memória.
+const _kvRenderPedidosTableOriginal = renderPedidosTable;
+renderPedidosTable = function() {
+  if (window.kvAccessRole !== 'solicitante') return _kvRenderPedidosTableOriginal();
+  const all = pedidos;
+  pedidos = all.filter(kvIsVisiblePedido);
+  try { return _kvRenderPedidosTableOriginal(); } finally { pedidos = all; }
+};
+
+const _kvRenderProgramadasTableOriginal = renderProgramadasTable;
+renderProgramadasTable = function() {
+  if (window.kvAccessRole !== 'solicitante') return _kvRenderProgramadasTableOriginal();
+  const all = pedidos;
+  pedidos = all.filter(kvIsVisiblePedido);
+  try { return _kvRenderProgramadasTableOriginal(); } finally { pedidos = all; }
+};
+
+// Mantém a identificação do solicitante após limpar o formulário.
+const _kvClearFormOriginal = clearForm;
+clearForm = function() {
+  _kvClearFormOriginal();
+  kvApplySolicitanteIdentity();
+};
+
+// Para solicitantes, força setor/solicitante da sessão no momento do envio.
+const _kvSubmitSolicitacaoOriginal = submitSolicitacao;
+submitSolicitacao = function() {
+  if (window.kvAccessRole === 'solicitante') kvApplySolicitanteIdentity();
+  return _kvSubmitSolicitacaoOriginal();
+};
+
+// Botão superior passa a representar a sessão atual e funciona como logout.
+updateUnifiedLoginButton = function() {
+  const btn=document.getElementById('btn-login'), icon=document.getElementById('login-icon'), label=document.getElementById('login-label');
+  if(!btn||!icon||!label) return;
+  btn.style.background = window.kvAccessRole ? 'rgba(0,58,112,.08)' : 'transparent';
+  btn.style.color='#003a70'; btn.style.borderColor='#003a70'; icon.textContent=window.kvAccessRole?'👤':'🔐';
+  if(window.kvAccessRole==='comprador') label.textContent='COMPRADOR · Sair';
+  else if(window.kvAccessRole==='almoxarife') label.textContent='ALMOXARIFE · Sair';
+  else if(window.kvAccessRole==='solicitante') label.textContent=kvDisplayNameFromEmail(window.kvAuthUser?.email)+' · Sair';
+  else label.textContent='Login';
+  label.classList.add('auth-user-chip');
+  btn.title=window.kvAccessRole?'Clique para sair':'Entrar no sistema';
+};
+
+async function kvLogout() {
+  try {
+    const raw=localStorage.getItem(KV_AUTH_STORAGE);
+    if(raw){ const s=JSON.parse(raw); if(s.access_token) await kvAuthFetch('/auth/v1/logout', null, s.access_token); }
+  } catch(e) {}
+  kvClearSession();
+  pedidos=[];
+  kvShowGate();
+  updateUnifiedLoginButton();
+}
+
+toggleLogin = function() {
+  if (window.kvAccessRole) kvLogout();
+  else kvShowGate();
+};
+
+// Perfis internos continuam com as senhas atuais, mas agora exigem também o usuário.
+checkUnifiedLogin = function() { kvShowGate(); };
+openLoginModal = function() { kvShowGate(); };
+
+requireComprador = function(tab) {
+  if (window.kvAccessRole === 'comprador' || window.compradorMode) { switchTab(tab); return; }
+  if (window.kvAccessRole === 'almoxarife' && tab === 'painel') { switchTab('painel'); setTimeout(()=>{try{switchKPI('almox')}catch(e){}},50); return; }
+  toast('Acesso exclusivo do perfil Comprador.', 'error');
+};
+
+requireAlmoxarife = function(tab) {
+  if (window.kvAccessRole === 'almoxarife' || window.kvAccessRole === 'comprador') { switchTab(tab); return; }
+  toast('Acesso exclusivo dos perfis Almoxarife/Comprador.', 'error');
+};
+
+async function kvRestoreSession() {
+  const role=sessionStorage.getItem(KV_ROLE_STORAGE);
+  if(role==='comprador' || role==='almoxarife') { await kvEnterInternalRole(role); return true; }
+  const raw=localStorage.getItem(KV_AUTH_STORAGE);
+  if(!raw) return false;
+  try {
+    let s=JSON.parse(raw);
+    if(!s.user) throw new Error('Sessão inválida');
+    if(s.expires_at && s.expires_at <= Math.floor(Date.now()/1000)+30 && s.refresh_token) {
+      const refreshed=await kvAuthFetch('/auth/v1/token?grant_type=refresh_token',{refresh_token:s.refresh_token});
+      kvSaveSupabaseSession(refreshed); s=JSON.parse(localStorage.getItem(KV_AUTH_STORAGE));
+    }
+    await kvEnterSolicitante(s.user); return true;
+  } catch(e) {
+    localStorage.removeItem(KV_AUTH_STORAGE); return false;
+  }
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  // O app permanece bloqueado até existir uma sessão válida.
+  const ok = await kvRestoreSession();
+  if(!ok) kvShowGate();
+});

@@ -413,3 +413,41 @@
     grid-template-columns: 1fr;
   }
 }
+
+
+/* =========================================================
+   v1.2.0 — LOGIN INICIAL / AUTOCADASTRO
+   ========================================================= */
+body.auth-locked > header,
+body.auth-locked > main { display:none !important; }
+.auth-gate {
+  position:fixed; inset:0; z-index:99999; display:flex; align-items:center; justify-content:center;
+  padding:24px; background:linear-gradient(135deg,#eef4f9 0%,#f8fbfd 50%,#eef7f6 100%);
+  font-family:'DM Sans',sans-serif;
+}
+.auth-gate.hidden { display:none; }
+.auth-panel {
+  width:min(430px,100%); background:#fff; border:1px solid #dce6ef; border-radius:18px;
+  box-shadow:0 24px 70px rgba(0,58,112,.14); padding:30px;
+}
+.auth-brand { display:flex; align-items:center; gap:13px; margin-bottom:28px; }
+.auth-mark {
+  width:46px; height:46px; border-radius:12px; display:grid; place-items:center; color:#fff; font-weight:800;
+  font-family:'Inter',sans-serif; font-size:22px; background:linear-gradient(135deg,#003a70,#00a99d);
+}
+.auth-title { font-family:'Inter',sans-serif; font-weight:750; font-size:19px; color:#172b3c; }
+.auth-subtitle { font-size:12px; color:#75879a; margin-top:2px; }
+.auth-heading { font-family:'Inter',sans-serif; font-size:25px; font-weight:750; color:#172b3c; margin-bottom:7px; }
+.auth-help { font-size:13px; line-height:1.5; color:#6b7f96; margin-bottom:20px; }
+.auth-label { display:block; font-size:11px; font-weight:700; color:#53687d; text-transform:uppercase; letter-spacing:.7px; margin:13px 0 6px; }
+.auth-input { width:100%; box-sizing:border-box; border:1.5px solid #d5e0ea; background:#fff; border-radius:9px; padding:11px 12px; font:14px 'DM Sans',sans-serif; color:#1d2d3d; outline:none; }
+.auth-input:focus { border-color:#0069a8; box-shadow:0 0 0 3px rgba(0,105,168,.08); }
+.auth-primary,.auth-secondary,.auth-link { width:100%; border-radius:9px; font:600 14px 'DM Sans',sans-serif; cursor:pointer; }
+.auth-primary { border:0; color:#fff; padding:12px; margin-top:8px; background:linear-gradient(135deg,#003a70,#005f9e); }
+.auth-primary:hover { opacity:.92; }
+.auth-secondary { border:1.5px solid #cbd9e5; color:#003a70; background:#f8fbfd; padding:11px; }
+.auth-link { border:0; color:#557087; background:transparent; padding:12px; margin-top:5px; }
+.auth-error { min-height:19px; color:#c62828; font-size:12px; margin-top:8px; line-height:1.4; }
+.auth-divider { display:flex; align-items:center; gap:10px; color:#8a9aac; font-size:11px; margin:18px 0 12px; }
+.auth-divider:before,.auth-divider:after { content:''; height:1px; background:#e2e9ef; flex:1; }
+.auth-user-chip { max-width:230px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
