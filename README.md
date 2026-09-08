@@ -1,4 +1,4 @@
-# Kovalent Compras Nacionais — v1.2.1
+# Kovalent Compras Nacionais — v1.2.2
 
 Atualização visual da tela inicial de Login/Cadastro com identidade Kovalent.
 
@@ -7,4 +7,4 @@ Atualização visual da tela inicial de Login/Cadastro com identidade Kovalent.
 - Login e autocadastro continuam funcionais.
 - Acessos COMPRADOR e ALMOXARIFE mantêm as senhas atuais.
 - Cadastro de solicitante mantém seleção de setor.
-- Cache bust atualizado para v1.2.1.
+- Cache bust atualizado para v1.2.2.
