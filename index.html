@@ -6,7 +6,7 @@
 <title>Kovalent · Sistema de Compras Nacionais</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<link rel="stylesheet" href="css/style.css?v=1.2.4">
+<link rel="stylesheet" href="css/style.css?v=1.2.5">
 </head>
 <body class="auth-locked">
 
@@ -114,143 +114,84 @@
 <main>
 
   <!-- ===================== SOLICITAR ===================== -->
-  <div class="tab-pane active" id="tab-solicitar">
-    <div class="page-title">Nova Solicitação de Compra</div>
-    <div class="page-sub">Preencha os campos abaixo conforme o formulário FR 303</div>
+  <div class="tab-pane active kv-request-page" id="tab-solicitar">
+    <section class="kv-page-hero">
+      <div class="kv-hero-copy">
+        <div class="page-title">Nova Solicitação de Compra</div>
+        <div class="page-sub">Registre uma nova necessidade de aquisição de forma simples e rápida.</div>
+        <div class="kv-hero-line"></div>
+      </div>
+      <div class="kv-hero-quote">“Soluções<br>que impulsionam<br>a saúde.”</div>
+      <div class="kv-hero-photo" aria-hidden="true"></div>
+    </section>
 
-    <div class="card">
-      <div class="card-title"><span>📋</span> Dados da Solicitação</div>
-      <div class="form-grid">
-        <div class="form-group">
-          <label>Número da SC *</label>
-          <input type="text" id="f-sc" placeholder="SC-2024-001" readonly style="background:rgba(0,198,167,0.05); color:var(--accent)">
-        </div>
-        <div class="form-group">
-          <label>Data da Solicitação *</label>
-          <input type="date" id="f-data">
-        </div>
-        <div class="form-group">
-          <label>Empresa *</label>
-          <select id="f-empresa">
-            <option value="">Selecione...</option>
-            <option>Kovalent</option>
-            <option>Biosys</option>
-            <option>Biosys Filial</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Solicitante *</label>
-          <input type="text" id="f-solicitante" placeholder="Nome completo">
-        </div>
-        <div class="form-group">
-          <label>Departamento / Setor *</label>
-          <select id="f-depto">
-            <option value="">Selecione...</option>
-            <option>Logística</option>
-            <option>TI</option>
-            <option>Envase e Montagem</option>
-            <option>Fabricação</option>
-            <option>Assessoria Científica</option>
-            <option>Assistência Técnica</option>
-            <option>Marketing</option>
-            <option>Projetos</option>
-            <option>Diretoria</option>
-            <option>Financeiro</option>
-            <option>Comercial</option>
-            <option>Faturamento</option>
-            <option>Gerência</option>
-            <option>Regulatório</option>
-            <option>Garantia da Qualidade</option>
-            <option>Controle de Qualidade</option>
-            <option>RH</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Prioridade *</label>
-          <select id="f-prioridade">
-            <option value="">Selecione...</option>
-            <option value="Baixa">🟢 Baixa</option>
-            <option value="Média">🟡 Média</option>
-            <option value="Alta">🔴 Alta</option>
-            <option value="Urgente">🚨 Urgente</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Data Necessidade *</label>
-          <input type="date" id="f-necessidade">
-        </div>
-        <div class="form-group">
-          <label>Tipo de Compra</label>
-          <select id="f-tipo">
-            <option value="">Selecione...</option>
-            <option>Uso/Consumo</option>
-            <option>Revenda</option>
-            <option>Licitações</option>
-            <option>Fabricação</option>
-            <option>Industrialização</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Fornecedor / Marca Sugerida</label>
-          <input type="text" id="f-fornecedor" placeholder="Opcional">
-        </div>
-        <div class="form-group">
-          <label>Link do Produto</label>
-          <input type="url" id="f-link" placeholder="https://...">
-        </div>
-        <div class="form-group">
-          <label>Valor de Referência (R$) <span style="color:var(--muted);font-size:11px;text-transform:none;letter-spacing:0">— opcional</span></label>
-          <input type="number" id="f-valref" placeholder="0,00" step="0.01" min="0">
-        </div>
-        <div class="form-group full">
-          <label>Justificativa / Finalidade *</label>
-          <textarea id="f-justificativa" placeholder="Descreva a finalidade da compra e justificativa para aquisição..."></textarea>
+    <section class="kv-request-shell">
+      <div class="kv-step-row">
+        <div class="kv-step active"><span>1</span><div><b>Dados da Solicitação</b><small>Informações principais</small></div></div>
+        <div class="kv-step-line"></div>
+        <div class="kv-step"><span>2</span><div><b>Itens da Solicitação</b><small>Produtos e quantidades</small></div></div>
+        <div class="kv-step-line"></div>
+        <div class="kv-step"><span>3</span><div><b>Revisão e Envio</b><small>Confira e finalize</small></div></div>
+        <div class="kv-sc-chip">
+          <div class="kv-sc-icon">📄</div>
+          <div><small>Nº da Solicitação (automático)</small><input type="text" id="f-sc" placeholder="SC-2026-001" readonly></div>
         </div>
       </div>
 
-      <hr class="section-divider">
-
-      <div class="items-section">
-        <div class="items-header">
-          <div class="card-title" style="margin:0"><span>📦</span> Itens da Solicitação</div>
-          <button class="btn btn-secondary" onclick="addItemRow()">+ Adicionar Item</button>
-        </div>
-        <div class="items-grid">
-          <div class="items-grid-header">
-            <span>Descrição do Item</span>
-            <span>Un. Medida</span>
-            <span>Qtd. Solicitada</span>
-            <span>Referência / Código</span>
-            <span></span>
-          </div>
-          <div id="items-body">
-            <!-- rows added here -->
+      <div class="kv-request-grid">
+        <div class="card kv-card-section">
+          <div class="card-title"><span>📋</span><div>Dados da Solicitação<small>Informações básicas da sua necessidade.</small></div></div>
+          <div class="form-grid kv-form-compact">
+            <div class="form-group"><label>Empresa *</label><select id="f-empresa"><option value="">Selecione...</option><option>Kovalent</option><option>Biosys</option><option>Biosys Filial</option></select></div>
+            <div class="form-group"><label>Data da Solicitação *</label><input type="date" id="f-data"></div>
+            <div class="form-group"><label>Solicitante *</label><input type="text" id="f-solicitante" placeholder="Nome completo"></div>
+            <div class="form-group"><label>Departamento / Setor *</label><select id="f-depto"><option value="">Selecione...</option><option>Logística</option><option>TI</option><option>Envase e Montagem</option><option>Fabricação</option><option>Assessoria Científica</option><option>Assistência Técnica</option><option>Marketing</option><option>Projetos</option><option>Diretoria</option><option>Financeiro</option><option>Comercial</option><option>Faturamento</option><option>Gerência</option><option>Regulatório</option><option>Garantia da Qualidade</option><option>Controle de Qualidade</option><option>RH</option></select></div>
+            <div class="form-group"><label>Prioridade *</label><select id="f-prioridade"><option value="">Selecione...</option><option value="Baixa">🟢 Baixa</option><option value="Média">🟡 Média</option><option value="Alta">🔴 Alta</option><option value="Urgente">🚨 Urgente</option></select></div>
           </div>
         </div>
+
+        <div class="card kv-card-section">
+          <div class="card-title"><span>🛒</span><div>Informações da Compra<small>Detalhes da aquisição.</small></div></div>
+          <div class="form-grid kv-form-compact">
+            <div class="form-group"><label>Tipo de Compra</label><select id="f-tipo"><option value="">Selecione...</option><option>Uso/Consumo</option><option>Revenda</option><option>Licitações</option><option>Fabricação</option><option>Industrialização</option></select></div>
+            <div class="form-group"><label>Data Necessidade *</label><input type="date" id="f-necessidade"></div>
+            <div class="form-group"><label>Fornecedor / Marca Sugerida</label><input type="text" id="f-fornecedor" placeholder="Opcional"></div>
+            <div class="form-group"><label>Link do Produto</label><input type="url" id="f-link" placeholder="https://..."></div>
+            <div class="form-group"><label>Valor de Referência (R$) <span class="kv-optional">— opcional</span></label><input type="number" id="f-valref" placeholder="R$ 0,00" step="0.01" min="0"></div>
+          </div>
+        </div>
+
+        <div class="card kv-card-section kv-just-card">
+          <div class="card-title"><span>📄</span><div>Justificativa / Finalidade<small>Descreva a finalidade da compra e a justificativa da necessidade.</small></div></div>
+          <div class="form-group"><textarea id="f-justificativa" maxlength="500" placeholder="Descreva aqui a finalidade da compra e justificativa para aquisição..."></textarea><div class="kv-char-hint">até 500 caracteres</div></div>
+        </div>
+
+        <aside class="kv-tip-card"><span>ℹ</span><div><b>Dica</b><p>Quanto mais detalhes você fornecer, mais ágil será o processo de cotação e aprovação da sua solicitação.</p></div></aside>
       </div>
 
-      <hr class="section-divider">
-
-      <div class="form-grid">
-        <div class="form-group full">
-          <label>Observações Adicionais</label>
-          <textarea id="f-obs" placeholder="Informações complementares, condições especiais de entrega, etc..."></textarea>
+      <div class="card kv-items-card">
+        <div class="items-header"><div class="card-title" style="margin:0"><span>📦</span><div>Itens da Solicitação<small>Adicione os produtos ou serviços que deseja adquirir.</small></div></div><button class="btn btn-primary" onclick="addItemRow()">＋ Adicionar Item</button></div>
+        <div class="items-grid kv-items-grid">
+          <div class="items-grid-header"><span>Descrição do Item</span><span>Un. Medida</span><span>Qtd. Solicitada</span><span>Referência / Código</span><span></span></div>
+          <div id="items-body"></div>
         </div>
-        <div class="form-group">
-          <label>Anexo (opcional)</label>
-          <input type="file" id="f-anexo" accept=".pdf,.jpg,.png,.xlsx">
-        </div>
-        <div class="form-group">
-          <label>Aprovador Responsável</label>
-          <input type="text" id="f-aprovador" placeholder="Nome do gestor aprovador">
-        </div>
+        <div class="kv-empty-items" id="kv-empty-items">▱<br><small>Nenhum item adicionado ainda.<br>Clique em “Adicionar Item” para incluir os produtos ou serviços.</small></div>
       </div>
 
-      <div class="form-actions">
-        <button class="btn btn-secondary" onclick="clearForm()">🗑 Limpar</button>
-        <button class="btn btn-primary" onclick="submitSolicitacao()">✔ Enviar Solicitação</button>
+      <div class="kv-lower-grid">
+        <div class="card kv-card-section">
+          <div class="card-title"><span>📝</span><div>Informações Complementares<small>Campos opcionais para complementar a solicitação.</small></div></div>
+          <div class="form-grid kv-form-compact">
+            <div class="form-group full"><label>Observações Adicionais</label><textarea id="f-obs" placeholder="Informações complementares, condições especiais de entrega, etc..."></textarea></div>
+            <div class="form-group"><label>Anexo (opcional)</label><input type="file" id="f-anexo" accept=".pdf,.jpg,.png,.xlsx"></div>
+            <div class="form-group"><label>Aprovador Responsável</label><input type="text" id="f-aprovador" placeholder="Nome do gestor aprovador"></div>
+          </div>
+        </div>
+        <aside class="kv-help-card"><div class="kv-help-icon">?</div><b>Dúvidas?</b><p>Em caso de dúvidas sobre o processo de compras, entre em contato com o time de suprimentos.</p></aside>
       </div>
-    </div>
+
+      <div class="form-actions kv-request-actions"><button class="btn btn-secondary" onclick="clearForm()">← Cancelar</button><div></div><button class="btn btn-primary" onclick="submitSolicitacao()">Enviar Solicitação →</button></div>
+    </section>
   </div>
 
   <!-- ===================== PAINEL ===================== -->
@@ -670,6 +611,6 @@
   </div>
 </div>
 
-<script src="js/app.js?v=1.2.4"></script>
+<script src="js/app.js?v=1.2.5"></script>
 </body>
 </html>

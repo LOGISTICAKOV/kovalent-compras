@@ -14,3 +14,6 @@ Atualização visual da tela inicial de Login/Cadastro com identidade Kovalent.
 - Corrigida a duplicação visual da tela de login: a imagem de fundo agora contém apenas a área institucional (logo/laboratório).
 - O formulário de login/cadastro é renderizado somente pelo HTML/CSS funcional do sistema.
 - Cache-busting atualizado para v1.2.3.
+
+
+v1.2.5: reestruturação visual da tela Solicitar para reproduzir o mockup aprovado, preservando IDs e lógica.

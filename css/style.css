@@ -539,3 +539,49 @@ body:not(.auth-locked) #tab-recebimentos>div:first-child .page-title{color:#fff!
  body:not(.auth-locked) .tab-pane>.page-title,body:not(.auth-locked) .tab-pane>.page-sub{margin-left:-18px;margin-right:-18px;padding-left:22px;padding-right:22px}
  body:not(.auth-locked) .tab-pane>.page-title::after{width:28%;opacity:.55}
 }
+
+/* =========================================================
+   v1.2.5 — SOLICITAR fiel ao mockup aprovado
+   ========================================================= */
+body:not(.auth-locked) #tab-solicitar{margin:0 -34px;padding:0;background:linear-gradient(180deg,#edf6fc 0,#f7fbfe 82%)}
+#tab-solicitar .kv-page-hero{height:150px;position:relative;overflow:hidden;background:linear-gradient(105deg,#082f51 0%,#0b4b78 58%,#0786ca 100%);color:#fff;padding:28px 70px;display:flex;align-items:center}
+#tab-solicitar .kv-page-hero:before{content:"";position:absolute;inset:-100px auto auto -80px;width:700px;height:260px;border-radius:50%;background:rgba(7,141,222,.11);transform:rotate(-6deg)}
+#tab-solicitar .kv-hero-copy{position:relative;z-index:3;min-width:52%}
+#tab-solicitar .kv-page-hero .page-title{background:none!important;margin:0!important;padding:0!important;font-size:30px!important;color:#fff!important;position:static!important}
+#tab-solicitar .kv-page-hero .page-title:after{display:none!important}
+#tab-solicitar .kv-page-hero .page-sub{background:none!important;margin:8px 0 0!important;padding:0!important;border:0!important;color:#dcebf6!important;font-size:14px!important}
+#tab-solicitar .kv-page-hero .page-sub:after{display:none!important}
+#tab-solicitar .kv-hero-line{width:34px;height:3px;background:#32c9f2;border-radius:8px;margin-top:15px}
+#tab-solicitar .kv-hero-quote{position:absolute;right:35%;top:27px;font-size:14px;line-height:1.25;font-style:italic;color:#fff;z-index:3}
+#tab-solicitar .kv-hero-photo{position:absolute;right:0;top:0;width:32%;height:100%;background:linear-gradient(90deg,rgba(8,57,95,1) 0%,rgba(8,57,95,.18) 33%,rgba(8,57,95,0) 55%),url('../assets/internal-hero.jpg') center 36%/cover no-repeat;clip-path:polygon(15% 0,100% 0,100% 100%,0 100%,9% 55%)}
+#tab-solicitar .kv-request-shell{padding:0 70px 40px;position:relative}
+#tab-solicitar .kv-step-row{min-height:88px;margin-top:-1px;display:flex;align-items:center;gap:14px;position:relative}
+#tab-solicitar .kv-step{display:flex;align-items:center;gap:10px;min-width:205px;color:#71869a}
+#tab-solicitar .kv-step>span{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:#c8d4df;color:#fff;font-weight:800}
+#tab-solicitar .kv-step.active{color:#087ac6}#tab-solicitar .kv-step.active>span{background:#078dde;box-shadow:0 5px 14px rgba(7,141,222,.28)}
+#tab-solicitar .kv-step b{display:block;font-size:12px}#tab-solicitar .kv-step small{display:block;font-size:10px;margin-top:2px;color:#71869a}
+#tab-solicitar .kv-step-line{height:2px;background:#d8e5ee;width:70px}
+#tab-solicitar .kv-sc-chip{margin-left:auto;display:flex;align-items:center;gap:11px;background:#f3fbff;border:1px solid #cbe9f7;border-radius:11px;padding:11px 14px;min-width:235px;box-shadow:0 5px 15px rgba(20,55,88,.03)}
+#tab-solicitar .kv-sc-icon{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;background:#fff;color:#10b6a4;font-size:21px;border:1px solid #d8edf3}
+#tab-solicitar .kv-sc-chip small{display:block;color:#8091a0;font-size:10px}#tab-solicitar .kv-sc-chip input{border:0!important;padding:0!important;background:transparent!important;color:#00a995!important;font-size:16px!important;font-weight:800!important;width:150px;box-shadow:none!important}
+#tab-solicitar .kv-request-grid{display:grid;grid-template-columns:1.35fr 1fr;gap:16px}
+#tab-solicitar .card{margin-top:0!important;border-radius:14px!important;box-shadow:0 10px 28px rgba(20,55,88,.06)!important;padding:20px!important}
+#tab-solicitar .card-title{align-items:flex-start!important;margin-bottom:16px!important}#tab-solicitar .card-title>span:first-child{flex:none}
+#tab-solicitar .card-title>div{font-size:16px;line-height:1.15}#tab-solicitar .card-title small{display:block;font-size:11px;font-weight:400;color:#6f8395;margin-top:4px}
+#tab-solicitar .kv-form-compact{gap:12px 14px}#tab-solicitar .kv-form-compact .form-group{gap:5px}
+#tab-solicitar label{font-size:10px!important;color:#34506b!important;letter-spacing:.15px!important}
+#tab-solicitar input,#tab-solicitar select,#tab-solicitar textarea{min-height:40px;font-size:13px}
+#tab-solicitar .kv-optional{font-size:10px;text-transform:none;letter-spacing:0;color:#8496a7;font-weight:500}
+#tab-solicitar .kv-just-card textarea{min-height:78px}#tab-solicitar .kv-char-hint{text-align:right;font-size:10px;color:#8091a0;margin-top:4px}
+#tab-solicitar .kv-tip-card{display:flex;gap:12px;align-items:flex-start;background:linear-gradient(135deg,#eaf7ff,#e2f2fc);border:1px solid #cbe8f8;border-radius:13px;padding:20px;color:#316189;align-self:stretch}
+#tab-solicitar .kv-tip-card>span{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;background:#078dde;color:#fff;font-weight:800;font-size:18px;flex:none}
+#tab-solicitar .kv-tip-card b{color:#0875bb;font-size:16px}#tab-solicitar .kv-tip-card p{margin:5px 0 0;font-size:12px;line-height:1.45}
+#tab-solicitar .kv-items-card{margin-top:16px!important;position:relative}#tab-solicitar .kv-items-grid{margin-top:14px}
+#tab-solicitar .kv-empty-items{text-align:center;color:#7d91a2;padding:18px 10px 4px;font-size:24px}#tab-solicitar .kv-empty-items small{font-size:10px;line-height:1.45}
+#tab-solicitar #items-body:not(:empty)+*{display:none}
+#tab-solicitar .kv-lower-grid{display:grid;grid-template-columns:1.35fr .55fr;gap:16px;margin-top:16px}
+#tab-solicitar .kv-help-card{background:#fff;border:1px solid var(--kv-line);border-radius:14px;box-shadow:0 10px 28px rgba(20,55,88,.05);padding:20px;color:#58728d}
+#tab-solicitar .kv-help-icon{width:34px;height:34px;border-radius:50%;background:#078dde;color:white;display:grid;place-items:center;font-weight:800;font-size:18px;margin-bottom:10px}#tab-solicitar .kv-help-card b{font-size:15px;color:#17324d}#tab-solicitar .kv-help-card p{font-size:11px;line-height:1.5}
+#tab-solicitar .kv-request-actions{display:grid;grid-template-columns:auto 1fr auto;border-top:0!important;margin-top:18px;padding-top:0!important}
+@media(max-width:1050px){body:not(.auth-locked) #tab-solicitar{margin:0 -18px}#tab-solicitar .kv-request-shell{padding:0 22px 35px}#tab-solicitar .kv-page-hero{padding:26px 22px}.kv-hero-quote{display:none!important}#tab-solicitar .kv-step-line{display:none}#tab-solicitar .kv-step{min-width:auto;flex:1}#tab-solicitar .kv-sc-chip{min-width:205px}.kv-request-grid,.kv-lower-grid{grid-template-columns:1fr!important}}
+@media(max-width:720px){#tab-solicitar .kv-hero-photo{display:none}#tab-solicitar .kv-step-row{flex-wrap:wrap;padding:14px 0}#tab-solicitar .kv-step{min-width:45%}#tab-solicitar .kv-sc-chip{width:100%;margin-left:0}#tab-solicitar .kv-request-grid{grid-template-columns:1fr}.kv-form-compact{grid-template-columns:1fr!important}}
