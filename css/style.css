@@ -434,3 +434,108 @@ body.auth-locked > main { display:none !important; }
 .auth-internal-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.auth-internal{border:0;border-radius:11px;background:#eaf5fd;color:#0c67a8;display:flex;align-items:center;gap:10px;padding:13px 14px;text-align:left;cursor:pointer}.auth-internal:hover{background:#dff0fb}.auth-internal-icon{font-size:22px}.auth-internal b{display:block;font:700 12px 'Inter',sans-serif}.auth-internal small{display:block;font-size:10px;margin-top:3px;color:#3276a8}.auth-signup-call{text-align:center;color:#687b8e;font-size:11px;margin-top:18px}.auth-signup-call button{border:0;background:transparent;color:#0784d5;font-weight:700;text-decoration:underline;cursor:pointer}.auth-footer{text-align:center;color:#dbe6ef;font-size:10px;line-height:1.5;margin-top:28px}.auth-footer strong{font-size:11px}.auth-footer span{color:#a9bfd4}.auth-user-chip{max-width:230px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @media(max-width:980px){.auth-gate{grid-template-columns:1fr}.auth-visual{display:none}.auth-side{padding:28px 20px;background:linear-gradient(145deg,#183653,#294a6d)}.auth-panel{max-width:560px}}
 @media(max-width:560px){.auth-side{justify-content:flex-start;padding-top:28px}.auth-side-title{font-size:15px}.auth-side-subtitle{margin-bottom:18px}.auth-panel{padding:26px 20px;border-radius:15px}.auth-heading{font-size:25px}.auth-internal-grid{grid-template-columns:1fr}.auth-footer{margin-top:18px}}
+
+/* =========================================================
+   v1.2.4 — DESIGN SYSTEM KOVALENT / TELAS INTERNAS
+   Atualização exclusivamente visual. Mantém a lógica existente.
+   ========================================================= */
+:root{
+  --kv-navy:#0d2f50;
+  --kv-navy-2:#123f68;
+  --kv-blue:#078dde;
+  --kv-cyan:#20bce8;
+  --kv-mint:#11b9a6;
+  --kv-bg:#f3f8fc;
+  --kv-card:#ffffff;
+  --kv-line:#dce8f2;
+  --kv-soft:#edf7fd;
+  --kv-shadow:0 10px 28px rgba(20,55,88,.08);
+}
+body:not(.auth-locked){background:linear-gradient(180deg,#f5faff 0,#eef5fa 100%);}
+body:not(.auth-locked) header{
+  min-height:68px;padding:0 28px;background:linear-gradient(100deg,#0b2e4d 0%,#0c3b62 55%,#0b2e4d 100%);
+  border-bottom:0;box-shadow:0 8px 24px rgba(4,35,62,.16);color:#fff;position:sticky;top:0;z-index:50;
+}
+body:not(.auth-locked) header .logo-text{color:#fff!important}
+body:not(.auth-locked) header .logo-sub{color:#9fc8e7!important}
+body:not(.auth-locked) header .logo img{background:#fff;border-radius:10px;padding:3px;box-shadow:0 3px 12px rgba(0,0,0,.12)}
+body:not(.auth-locked) header nav{gap:5px}
+body:not(.auth-locked) header .nav-btn{color:#d8e8f5;border-radius:9px;padding:10px 12px;border:1px solid transparent;background:transparent}
+body:not(.auth-locked) header .nav-btn:hover{background:rgba(255,255,255,.08);color:#fff}
+body:not(.auth-locked) header .nav-btn.active{background:linear-gradient(135deg,rgba(7,141,222,.35),rgba(32,188,232,.18));color:#fff;border-color:rgba(83,198,255,.24);box-shadow:inset 0 -2px 0 #2cc7f2}
+body:not(.auth-locked) header .lock-icon{opacity:.65}
+body:not(.auth-locked) header #btn-login{border-color:#8dc9ee!important;color:#fff!important;background:rgba(255,255,255,.07)!important}
+body:not(.auth-locked) header #btn-lancamento-direto{border-color:#43d8c7!important;color:#7ff2e4!important;background:rgba(17,185,166,.10)!important}
+body:not(.auth-locked) header .excel-badge{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.16);color:#dff7f2}
+body:not(.auth-locked) main{max-width:1440px;margin:0 auto;padding:0 34px 54px}
+
+/* Hero institucional reutilizado em todas as áreas */
+body:not(.auth-locked) .tab-pane{padding-top:0}
+body:not(.auth-locked) .tab-pane>.page-title,
+body:not(.auth-locked) #tab-recebimentos>div:first-child,
+body:not(.auth-locked) #tab-painel>div:first-child{
+  margin-left:-34px;margin-right:-34px;
+}
+body:not(.auth-locked) .tab-pane>.page-title{
+  position:relative;margin-top:0;padding:32px 38px 5px;color:#fff;font-size:28px;font-weight:750;letter-spacing:-.5px;
+  background:linear-gradient(90deg,rgba(7,45,77,.98) 0%,rgba(9,67,109,.94) 68%,rgba(5,105,159,.86) 100%);
+  overflow:hidden;z-index:0;
+}
+body:not(.auth-locked) .tab-pane>.page-title::after{
+  content:"";position:absolute;inset:0 0 0 auto;width:36%;z-index:-1;
+  background:linear-gradient(90deg,rgba(8,59,96,.95),rgba(8,59,96,.28)),url('../assets/internal-hero.jpg') center 45%/cover no-repeat;
+  opacity:.92;
+}
+body:not(.auth-locked) .tab-pane>.page-sub{
+  margin-left:-34px;margin-right:-34px;margin-top:0;padding:0 38px 29px;color:#d6e9f7;font-size:13px;
+  background:linear-gradient(90deg,#072d4d 0%,#09436d 68%,#08699f 100%);border-bottom:4px solid #25bce7;
+}
+body:not(.auth-locked) .tab-pane>.page-sub::after{content:"";display:block;width:34px;height:3px;background:#2ac7ef;border-radius:4px;margin-top:11px}
+
+/* Cards e formulários */
+body:not(.auth-locked) .card{background:rgba(255,255,255,.96);border:1px solid var(--kv-line);border-radius:16px;box-shadow:var(--kv-shadow);margin-top:18px;padding:22px}
+body:not(.auth-locked) .card-title{font-size:16px;font-weight:750;color:#17324d;margin-bottom:18px;display:flex;align-items:center;gap:10px}
+body:not(.auth-locked) .card-title>span:first-child{width:34px;height:34px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#e5f5ff,#d9f6fb);box-shadow:inset 0 0 0 1px #d4eaf6}
+body:not(.auth-locked) label{color:#58728d;font-size:11px;font-weight:700;letter-spacing:.55px}
+body:not(.auth-locked) input,body:not(.auth-locked) select,body:not(.auth-locked) textarea{border-color:#cfdeea;background:#fff;border-radius:9px;transition:.18s ease}
+body:not(.auth-locked) input:focus,body:not(.auth-locked) select:focus,body:not(.auth-locked) textarea:focus{border-color:#0a98e5;box-shadow:0 0 0 3px rgba(10,152,229,.10)}
+body:not(.auth-locked) .btn{border-radius:9px;font-weight:650}
+body:not(.auth-locked) .btn-primary{background:linear-gradient(135deg,#078dde,#0075c5);box-shadow:0 7px 18px rgba(7,141,222,.20)}
+body:not(.auth-locked) .btn-secondary{background:#f5f9fc;border-color:#d7e3ed}
+body:not(.auth-locked) .form-actions{padding-top:18px;border-top:1px solid #e5edf4}
+
+/* Filtros e tabelas */
+body:not(.auth-locked) .filter-bar,body:not(.auth-locked) .search-bar{background:#fff;border:1px solid var(--kv-line);border-radius:14px;padding:13px;box-shadow:0 6px 18px rgba(20,55,88,.05)}
+body:not(.auth-locked) .data-table-wrap{border:1px solid #e0eaf2;border-radius:12px;overflow:hidden;background:#fff}
+body:not(.auth-locked) table{background:#fff}
+body:not(.auth-locked) th{background:#f1f7fb!important;color:#49657f!important;font-size:10.5px!important;letter-spacing:.45px;border-bottom:1px solid #dce8f1!important}
+body:not(.auth-locked) td{border-bottom-color:#eaf0f5!important}
+body:not(.auth-locked) tbody tr:hover{background:#f7fbfe!important}
+body:not(.auth-locked) .status-badge{font-weight:700;border-radius:100px;padding:5px 10px}
+body:not(.auth-locked) .status-filter-btn{border-radius:100px!important}
+
+/* KPI — aparência de dashboard executivo */
+body:not(.auth-locked) #tab-painel .kpi-grid,
+body:not(.auth-locked) #tab-painel [class*="kpi-grid"]{gap:14px}
+body:not(.auth-locked) #tab-painel .kpi-card,
+body:not(.auth-locked) #tab-painel [class*="stat-card"]{border:1px solid var(--kv-line);border-radius:15px;background:#fff;box-shadow:0 8px 24px rgba(20,55,88,.06)}
+body:not(.auth-locked) #tab-painel .kpi-tab-btn{border-radius:9px;font-weight:700}
+body:not(.auth-locked) #tab-painel .kpi-tab-btn.active{background:linear-gradient(135deg,#078dde,#006fb9);color:#fff}
+
+/* Pedidos / Programadas / Recebimentos: blocos mais claros */
+body:not(.auth-locked) #tab-pedidos .card,
+body:not(.auth-locked) #tab-programadas .card,
+body:not(.auth-locked) #tab-recebimentos .card{padding:18px 20px}
+body:not(.auth-locked) #tab-pedidos .order-card{border-radius:14px;box-shadow:0 5px 16px rgba(20,55,88,.05)}
+
+/* Cabeçalho especial da Central de Recebimentos, que possui estrutura própria */
+body:not(.auth-locked) #tab-recebimentos>div:first-child{padding:28px 38px;background:linear-gradient(90deg,#072d4d,#09436d);border-bottom:4px solid #25bce7;color:#fff}
+body:not(.auth-locked) #tab-recebimentos>div:first-child .page-title{color:#fff!important;font-size:28px!important}
+
+@media(max-width:1100px){
+ body:not(.auth-locked) header{padding:0 14px;flex-wrap:wrap;height:auto}
+ body:not(.auth-locked) header nav{order:3;width:100%;overflow-x:auto;padding-bottom:7px}
+ body:not(.auth-locked) main{padding-left:18px;padding-right:18px}
+ body:not(.auth-locked) .tab-pane>.page-title,body:not(.auth-locked) .tab-pane>.page-sub{margin-left:-18px;margin-right:-18px;padding-left:22px;padding-right:22px}
+ body:not(.auth-locked) .tab-pane>.page-title::after{width:28%;opacity:.55}
+}
