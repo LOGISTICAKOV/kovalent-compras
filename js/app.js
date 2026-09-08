@@ -1952,18 +1952,18 @@ function renderProgramadasTable() {
 // =========================================================
 function toggleStatusFilter(btn) {
   const status = btn.dataset.status;
-  const allBtn = document.querySelector('.status-filter-btn[data-status=""]');
+  const allBtn = document.querySelector('#status-filter-group .status-filter-btn[data-status=""]');
 
   if (status === '') {
     // "Todos" clicked — clear all, activate only Todos
-    document.querySelectorAll('.status-filter-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('#status-filter-group .status-filter-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
   } else {
     // deactivate "Todos"
     allBtn.classList.remove('active');
     btn.classList.toggle('active');
     // if nothing selected, re-activate Todos
-    const anyActive = [...document.querySelectorAll('.status-filter-btn.active')].some(b => b.dataset.status !== '');
+    const anyActive = [...document.querySelectorAll('#status-filter-group .status-filter-btn.active')].some(b => b.dataset.status !== '');
     if (!anyActive) allBtn.classList.add('active');
   }
   renderPedidosTable();
@@ -1985,6 +1985,22 @@ function renderPedidosTable() {
     if (ia !== ib) return ia - ib;
     return a.sc.localeCompare(b.sc);
   });
+
+  const pedidosKpi = document.getElementById('pedidos-kpi-row');
+  if (pedidosKpi) {
+    const totalPedidos = pedidos.length;
+    const valorTotal = pedidos.reduce((s,p)=>s+(Number(p.valorPago)||0),0);
+    const entregues = pedidos.filter(p=>p.status==='Finalizado').length;
+    const andamento = pedidos.filter(p=>!['Finalizado','Cancelado'].includes(p.status)).length;
+    const hoje = new Date(); hoje.setHours(0,0,0,0);
+    const atrasados = pedidos.filter(p=>!['Finalizado','Cancelado'].includes(p.status) && p.necessidade && new Date(p.necessidade) < hoje).length;
+    pedidosKpi.innerHTML = `
+      <div class="kpi-card kv-kpi-blue"><div class="kpi-label">📋 Pedidos no período</div><div class="kpi-value">${totalPedidos}</div><div class="kpi-sub">pedidos registrados</div></div>
+      <div class="kpi-card kv-kpi-mint"><div class="kpi-label">💰 Valor total</div><div class="kpi-value">${fmtBRL(valorTotal)}</div><div class="kpi-sub">valor efetivamente pago</div></div>
+      <div class="kpi-card kv-kpi-green"><div class="kpi-label">✅ Pedidos entregues</div><div class="kpi-value">${entregues}</div><div class="kpi-sub">finalizados</div></div>
+      <div class="kpi-card kv-kpi-blue"><div class="kpi-label">🕒 Em andamento</div><div class="kpi-value">${andamento}</div><div class="kpi-sub">em processamento</div></div>
+      <div class="kpi-card kv-kpi-red"><div class="kpi-label">🔴 Atrasados</div><div class="kpi-value">${atrasados}</div><div class="kpi-sub">acima da necessidade</div></div>`;
+  }
 
   if (filtered.length === 0) {
     document.getElementById('pedidos-table').innerHTML = '<div class="empty-state" style="padding:40px"><div class="icon">📦</div><h3>Nenhum pedido</h3><p>Carregue uma planilha Excel ou crie novas solicitações</p></div>';

@@ -17,3 +17,10 @@ Atualização visual da tela inicial de Login/Cadastro com identidade Kovalent.
 
 
 v1.2.5: reestruturação visual da tela Solicitar para reproduzir o mockup aprovado, preservando IDs e lógica.
+
+
+## v1.2.6 — Redesign das abas internas
+- Programadas, Todos os Pedidos, Recebimentos e KPI alinhados ao mockup aprovado.
+- Correções de espaçamento, hero, cards, filtros e tabelas.
+- Resumo dinâmico em Todos os Pedidos.
+- Correção do escopo dos filtros de status entre Programadas e Pedidos.

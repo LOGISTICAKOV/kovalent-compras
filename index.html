@@ -6,7 +6,7 @@
 <title>Kovalent · Sistema de Compras Nacionais</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<link rel="stylesheet" href="css/style.css?v=1.2.5">
+<link rel="stylesheet" href="css/style.css?v=1.2.6">
 </head>
 <body class="auth-locked">
 
@@ -196,14 +196,20 @@
 
   <!-- ===================== PAINEL ===================== -->
   <div class="tab-pane" id="tab-painel">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:12px">
-      <div class="page-title" style="margin-bottom:0" id="painel-title">KPI Compras</div>
-      <div style="display:flex;gap:8px">
+<section class="kv-inner-hero">
+      <div class="kv-inner-hero-copy">
+        <div class="page-title">Painel de KPI</div>
+        <div class="page-sub">Indicadores que impulsionam melhores decisões.</div>
+        <div class="kv-inner-hero-line"></div>
+      </div>
+      <div class="kv-inner-hero-quote">“Dados hoje,<br>decisões mais saudáveis amanhã.”</div>
+      <div class="kv-inner-hero-photo"></div>
+      <div class="kv-hero-actions">
         <button id="btn-kpi-compras" class="kpi-tab-btn active" onclick="switchKPI('compras')">📊 KPI Compras</button>
         <button id="btn-kpi-almox" class="kpi-tab-btn" onclick="switchKPI('almox')">📦 KPI Almoxarifado</button>
       </div>
-    </div>
-    <div class="page-sub" id="painel-sub" style="margin-bottom:28px">Indicadores de desempenho das compras nacionais</div>
+    </section>
+    <div class="kv-page-content kv-kpi-content">
 
     <!-- KPI COMPRAS -->
     <div id="kpi-pane-compras">
@@ -297,14 +303,23 @@
         <div class="data-table-wrap" id="almox-retirada-table"></div>
       </div>
     </div><!-- /kpi-pane-almox -->
+    </div><!-- /kv-page-content -->
   </div><!-- /tab-painel -->
 
   <!-- ===================== TODOS OS PEDIDOS ===================== -->
   <div class="tab-pane" id="tab-pedidos">
-    <div class="page-title">Todos os Pedidos</div>
-    <div class="page-sub">Acompanhe e busque todos os pedidos — use a barra de busca ou filtre por status</div>
-
-    <div style="display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap">
+    <section class="kv-inner-hero">
+      <div class="kv-inner-hero-copy">
+        <div class="page-title">Todos os Pedidos</div>
+        <div class="page-sub">Acompanhe o status de todos os pedidos de compra.</div>
+        <div class="kv-inner-hero-line"></div>
+      </div>
+      <div class="kv-inner-hero-quote">“Visibilidade do pedido<br>à entrega.”</div>
+      <div class="kv-inner-hero-photo"></div>
+      
+    </section>
+    <div class="kv-page-content">
+      <div class="kv-toolbar kv-toolbar-stacked">
       <input type="text" id="filterInput" placeholder="🔍  Buscar por SC, item, solicitante, depto..." style="flex:1; min-width:200px" oninput="renderPedidosTable()">
       <div id="status-filter-group" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
         <button class="status-filter-btn active" data-status="" onclick="toggleStatusFilter(this)">Todos</button>
@@ -322,25 +337,35 @@
         <button class="status-filter-btn" data-status="Finalizado" onclick="toggleStatusFilter(this)">Finalizado</button>
         <button class="status-filter-btn" data-status="Cancelado" onclick="toggleStatusFilter(this)">Cancelado</button>
       </div>
-    </div>
+      </div>
 
-    <div class="card">
-      <div class="data-table-wrap" id="pedidos-table"></div>
+      <div id="pedidos-kpi-row" class="kv-summary-grid kv-summary-grid-5"></div>
+
+      <div class="card kv-table-card">
+        <div class="data-table-wrap" id="pedidos-table"></div>
+      </div>
     </div>
   </div>
 
 
   <!-- ===================== RECEBIMENTOS ===================== -->
   <div class="tab-pane" id="tab-recebimentos">
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px">
-      <div class="page-title" style="margin-bottom:0">Central de Recebimentos</div>
-      <button class="btn btn-secondary" onclick="renderRecebimentosCentral()">🔄 Atualizar</button>
-    </div>
-    <div class="page-sub">Tela operacional do almoxarifado para registrar entregas parciais, selecionar itens e atualizar automaticamente o pedido</div>
+    <section class="kv-inner-hero">
+      <div class="kv-inner-hero-copy">
+        <div class="page-title">Central de Recebimentos</div>
+        <div class="page-sub">Registre e acompanhe o recebimento dos itens adquiridos.</div>
+        <div class="kv-inner-hero-line"></div>
+      </div>
+      <div class="kv-inner-hero-quote">“Controle e rastreabilidade<br>em cada etapa.”</div>
+      <div class="kv-inner-hero-photo"></div>
+      <div class="kv-hero-actions">
+        <button class="btn btn-secondary" onclick="renderRecebimentosCentral()">🔄 Atualizar</button>
+      </div>
+    </section>
+    <div class="kv-page-content">
+      <div class="kpi-grid kv-summary-grid" id="recebimentos-kpis"></div>
 
-    <div class="kpi-grid" id="recebimentos-kpis" style="margin-bottom:20px"></div>
-
-    <div style="display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap">
+      <div class="kv-toolbar">
       <input type="text" id="filterRecebimentos" placeholder="🔍 Buscar por SC, item, solicitante, depto, fornecedor ou NF..." style="flex:1; min-width:220px" oninput="renderRecebimentosCentral()">
       <select id="filterRecebimentosStatus" onchange="renderRecebimentosCentral()" style="min-width:190px">
         <option value="">Todos os recebíveis</option>
@@ -350,23 +375,32 @@
       </select>
     </div>
 
-    <div class="card" style="margin-bottom:20px">
+    <div class="card kv-table-card" style="margin-bottom:20px">
       <div class="card-title"><span>📥</span> Pedidos Aguardando Recebimento</div>
       <div class="data-table-wrap" id="recebimentos-table"></div>
     </div>
 
-    <div class="card">
-      <div class="card-title"><span>🧾</span> Últimas NFs / Recebimentos</div>
-      <div class="data-table-wrap" id="recebimentos-historico"></div>
+      <div class="card kv-table-card">
+        <div class="card-title"><span>🧾</span> Últimas NFs / Recebimentos</div>
+        <div class="data-table-wrap" id="recebimentos-historico"></div>
+      </div>
     </div>
   </div>
 
   <!-- ===================== PROGRAMADAS ===================== -->
   <div class="tab-pane" id="tab-programadas">
-    <div class="page-title">Compras Programadas</div>
-    <div class="page-sub">Visão consolidada das compras programadas — anuais, semestrais, trimestrais e mensais</div>
-
-    <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px">
+    <section class="kv-inner-hero">
+      <div class="kv-inner-hero-copy">
+        <div class="page-title">Compras Programadas</div>
+        <div class="page-sub">Visualize as necessidades cadastradas no planejamento anual.</div>
+        <div class="kv-inner-hero-line"></div>
+      </div>
+      <div class="kv-inner-hero-quote">“Planejamento hoje,<br>mais resultados amanhã.”</div>
+      <div class="kv-inner-hero-photo"></div>
+      
+    </section>
+    <div class="kv-page-content">
+      <div class="kv-toolbar kv-toolbar-stacked">
       <input type="text" id="filterProg" placeholder="Filtrar por item, empresa, depto, fornecedor..." style="width:100%" oninput="renderProgramadasTable()">
       <div id="prog-status-filter-group" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
         <button class="status-filter-btn active" data-status="" onclick="toggleProgStatusFilter(this)">Todos</button>
@@ -386,9 +420,9 @@
     </div>
 
     <!-- Summary cards -->
-    <div id="prog-kpi-row" style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px"></div>
+    <div id="prog-kpi-row" class="kv-summary-grid kv-summary-grid-4"></div>
 
-    <div class="card">
+    <div class="card kv-table-card">
       <div class="data-table-wrap" id="programadas-table"></div>
     </div>
 
@@ -406,6 +440,7 @@
           <div class="data-table-wrap" id="historico-table"></div>
         </div>
       </div>
+    </div>
     </div>
   </div>
 
@@ -611,6 +646,6 @@
   </div>
 </div>
 
-<script src="js/app.js?v=1.2.5"></script>
+<script src="js/app.js?v=1.2.6"></script>
 </body>
 </html>
