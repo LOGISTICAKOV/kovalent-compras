@@ -24,3 +24,10 @@ v1.2.5: reestruturação visual da tela Solicitar para reproduzir o mockup aprov
 - Correções de espaçamento, hero, cards, filtros e tabelas.
 - Resumo dinâmico em Todos os Pedidos.
 - Correção do escopo dos filtros de status entre Programadas e Pedidos.
+
+
+## v1.2.7
+- Correção e redesign executivo do KPI Compras.
+- Cards principais e operacionais reorganizados.
+- Gráfico mensal compactado e responsivo.
+- Status, SLA, saving por departamento e atrasos reorganizados sem alterar a lógica dos dados.

@@ -6,7 +6,7 @@
 <title>Kovalent · Sistema de Compras Nacionais</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<link rel="stylesheet" href="css/style.css?v=1.2.6">
+<link rel="stylesheet" href="css/style.css?v=1.2.7">
 </head>
 <body class="auth-locked">
 
@@ -212,57 +212,55 @@
     <div class="kv-page-content kv-kpi-content">
 
     <!-- KPI COMPRAS -->
-    <div id="kpi-pane-compras">
-    <div class="kpi-grid" id="kpi-grid"></div>
-
-    <div class="kpi-grid" id="kpi-fin-grid" style="margin-bottom:28px"></div>
-
-    <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:20px">
-      <div class="card">
-        <div class="card-title"><span>📊</span> Status dos Pedidos</div>
-        <div class="status-bars" id="status-bars"></div>
+    <div id="kpi-pane-compras" class="kv-kpi-executive">
+      <div class="kv-kpi-topline">
+        <div>
+          <div class="kv-kpi-eyebrow">Visão executiva</div>
+          <h2>Performance de Compras</h2>
+          <p>Acompanhe volume, saving, prazo e eficiência operacional em uma única visão.</p>
+        </div>
+        <div class="kv-kpi-period-chip">📅 Últimos 12 meses</div>
       </div>
-      <div class="card">
-        <div class="card-title"><span>⏱</span> SLA por Prioridade</div>
-        <div class="status-bars" id="sla-bars"></div>
-      </div>
-    </div>
 
-    <div style="margin-bottom:20px">
-      <div class="card">
-        <div class="card-title"><span>🏆</span> Saving por Departamento</div>
-        <div id="saving-depto"></div>
-      </div>
-    </div>
+      <div class="kpi-grid kv-kpi-primary" id="kpi-grid"></div>
+      <div class="kpi-grid kv-kpi-secondary" id="kpi-fin-grid"></div>
 
-    <!-- COMPRAS POR MÊS -->
-    <div style="margin-bottom:20px">
-      <div class="card">
-        <div class="card-title" style="justify-content:space-between">
-          <span><span>📅</span> Compras por Mês</span>
-          <div style="display:flex;gap:6px" id="chart-filter-btns">
-            <button class="chart-filter-btn active" onclick="setChartView('total',this)">Total</button>
-            <button class="chart-filter-btn" onclick="setChartView('empresa',this)">Por Empresa</button>
-            <button class="chart-filter-btn" onclick="setChartView('setor',this)">Por Setor</button>
+      <div class="kv-kpi-dashboard-grid kv-kpi-dashboard-main">
+        <div class="card kv-kpi-chart-card">
+          <div class="card-title kv-kpi-card-head">
+            <div><span>📅</span><div>Compras por Mês<small>Evolução do volume de pedidos nos últimos 12 meses.</small></div></div>
+            <div style="display:flex;gap:6px" id="chart-filter-btns">
+              <button class="chart-filter-btn active" onclick="setChartView('total',this)">Total</button>
+              <button class="chart-filter-btn" onclick="setChartView('empresa',this)">Por Empresa</button>
+              <button class="chart-filter-btn" onclick="setChartView('setor',this)">Por Setor</button>
+            </div>
           </div>
+          <div id="chart-legend" class="kv-chart-legend"></div>
+          <div id="chart-container" class="kv-chart-container"><canvas id="compras-chart"></canvas></div>
+          <div id="chart-empty" class="kv-chart-empty"><div>📊</div><span>Nenhum dado de compra disponível ainda</span></div>
         </div>
-        <div id="chart-legend" style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;min-height:20px"></div>
-        <div id="chart-container" style="overflow-x:auto">
-          <canvas id="compras-chart" style="width:100%;min-height:260px"></canvas>
-        </div>
-        <div id="chart-empty" style="display:none;text-align:center;padding:40px;color:var(--muted)">
-          <div style="font-size:36px;margin-bottom:10px">📊</div>
-          <div>Nenhum dado de compra disponível ainda</div>
+
+        <div class="card kv-kpi-status-card">
+          <div class="card-title"><span>📊</span><div>Pedidos por Status<small>Distribuição atual dos pedidos.</small></div></div>
+          <div class="status-bars kv-status-bars" id="status-bars"></div>
         </div>
       </div>
-    </div>
 
-    <div style="margin-top:0">
-      <div class="card">
-        <div class="card-title"><span>📋</span> Pedidos em Atraso / Atenção</div>
+      <div class="kv-kpi-dashboard-grid kv-kpi-dashboard-secondary">
+        <div class="card">
+          <div class="card-title"><span>🏆</span><div>Saving por Departamento<small>Comparativo entre cotação e valor pago.</small></div></div>
+          <div id="saving-depto"></div>
+        </div>
+        <div class="card">
+          <div class="card-title"><span>⏱</span><div>SLA por Prioridade<small>Distribuição dos pedidos por criticidade.</small></div></div>
+          <div class="status-bars kv-sla-bars" id="sla-bars"></div>
+        </div>
+      </div>
+
+      <div class="card kv-late-card">
+        <div class="card-title"><span>📋</span><div>Pedidos em Atraso / Atenção<small>Solicitações que ultrapassaram a data de necessidade.</small></div></div>
         <div class="data-table-wrap" id="late-table"></div>
       </div>
-    </div>
     </div><!-- /kpi-pane-compras -->
 
     <!-- KPI ALMOXARIFADO -->
@@ -646,6 +644,6 @@
   </div>
 </div>
 
-<script src="js/app.js?v=1.2.6"></script>
+<script src="js/app.js?v=1.2.7"></script>
 </body>
 </html>

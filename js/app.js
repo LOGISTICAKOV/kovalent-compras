@@ -1122,54 +1122,28 @@ function renderDashboard() {
   const savingRefPct = totalRef > 0 ? (savingRef / totalRef * 100) : 0;
 
   document.getElementById('kpi-grid').innerHTML = `
-    <div class="kpi-card"><div class="kpi-label">Total de Pedidos</div><div class="kpi-value accent">${total}</div><div class="kpi-sub">desde o início</div></div>
-    <div class="kpi-card"><div class="kpi-label">Em Aberto</div><div class="kpi-value info">${emAberto}</div><div class="kpi-sub">aguardando</div></div>
-    <div class="kpi-card"><div class="kpi-label">Atrasados</div><div class="kpi-value ${atrasados>0?'danger':'accent'}">${atrasados}</div><div class="kpi-sub">acima da data necessidade</div></div>
-    <div class="kpi-card"><div class="kpi-label">Lead Time Médio</div><div class="kpi-value warn">${avgLead}</div><div class="kpi-sub">dias (da solicitação à entrega)</div></div>
-    <div class="kpi-card" style="border-color:rgba(251,146,60,0.3)" onclick="openNFDetalhe()" title="Clique para ver pedidos pendentes">
-      <div class="kpi-label">🧾 Tempo Médio — Lançar NF</div>
-      <div class="kpi-value" style="color:#fb923c">${avgNF}</div>
-      <div class="kpi-sub" style="display:flex;justify-content:space-between">
-        <span>dias pendente no status</span>
-        ${pendentesNF > 0 ? '<span style="color:#fb923c;font-weight:600;cursor:pointer">'+pendentesNF+' pendente'+(pendentesNF>1?'s':'')+'</span>' : ''}
-      </div>
+    <div class="kpi-card kv-exec-card kv-exec-saving">
+      <div class="kv-exec-icon">💰</div><div><div class="kpi-value">${fmtBRL(totalSaving)}</div><div class="kpi-label">Saving no período</div><div class="kpi-sub">${fmtPct(savingPct)} de economia sobre cotação</div></div>
     </div>
-    <div class="kpi-card" style="border-color:rgba(5,150,105,0.25);cursor:${taxaNoPrazo!==null?'pointer':'default'}" onclick="${taxaNoPrazo!==null?'openTaxaPrazoModal()':''}" title="${taxaNoPrazo!==null?'Clique para ver detalhes':''}">
-      <div class="kpi-label">✅ Taxa no Prazo</div>
-      <div class="kpi-value" style="font-size:28px;color:${taxaColor}">${taxaNoPrazo !== null ? taxaNoPrazo + '%' : '—'}</div>
-      <div class="kpi-sub" style="display:flex;justify-content:space-between;align-items:center">
-        <span>${pedidosConcluidos.length} pedido${pedidosConcluidos.length!==1?'s':''} analisado${pedidosConcluidos.length!==1?'s':''}</span>
-        ${taxaNoPrazo !== null ? '<span style="color:'+taxaColor+';font-weight:600;font-size:11px">'+pedidosNoPrazo.length+' no prazo</span>' : ''}
-      </div>
+    <div class="kpi-card kv-exec-card kv-exec-orders">
+      <div class="kv-exec-icon">🛒</div><div><div class="kpi-value">${total}</div><div class="kpi-label">Pedidos realizados</div><div class="kpi-sub">${emAberto} em aberto</div></div>
+    </div>
+    <div class="kpi-card kv-exec-card kv-exec-lead">
+      <div class="kv-exec-icon">⏱</div><div><div class="kpi-value">${avgLead === '—' ? '—' : avgLead + ' dias'}</div><div class="kpi-label">Lead Time médio</div><div class="kpi-sub">da solicitação à entrega</div></div>
+    </div>
+    <div class="kpi-card kv-exec-card kv-exec-sla" style="cursor:${taxaNoPrazo!==null?'pointer':'default'}" onclick="${taxaNoPrazo!==null?'openTaxaPrazoModal()':''}">
+      <div class="kv-exec-icon">✅</div><div><div class="kpi-value" style="color:${taxaColor}">${taxaNoPrazo !== null ? taxaNoPrazo + '%' : '—'}</div><div class="kpi-label">Taxa de entregas no prazo</div><div class="kpi-sub">${pedidosConcluidos.length} pedidos analisados</div></div>
     </div>
   `;
 
-  // financial KPI row
   const finGrid = document.getElementById('kpi-fin-grid');
   if (finGrid) {
     finGrid.innerHTML = `
-      <div class="kpi-card" style="border-color:rgba(0,198,167,0.2)">
-        <div class="kpi-label">💰 Total Comprado</div>
-        <div class="kpi-value accent" style="font-size:22px">${fmtBRL(totalPago)}</div>
-        <div class="kpi-sub">soma dos valores pagos</div>
-      </div>
-
-      <div class="kpi-card" style="border-color:rgba(16,185,129,0.3);background:rgba(16,185,129,0.04)">
-        <div class="kpi-label">📉 Saving (Cotação → Pago)</div>
-        <div class="kpi-value" style="font-size:22px;color:#34d399">${fmtBRL(totalSaving)}</div>
-        <div class="kpi-sub" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
-          <span>${fmtPct(savingPct)} de economia sobre cotação</span>
-          ${totalSaving > 0 ? `<button onclick="openSavingModal('cotacao')" style="background:rgba(52,211,153,0.15);border:1px solid rgba(52,211,153,0.3);color:#34d399;border-radius:6px;padding:3px 10px;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;white-space:nowrap" onmouseover="this.style.background='rgba(52,211,153,0.25)'" onmouseout="this.style.background='rgba(52,211,153,0.15)'">Ver pedidos →</button>` : ''}
-        </div>
-      </div>
-      <div class="kpi-card" style="border-color:rgba(96,165,250,0.2)">
-        <div class="kpi-label">🎯 Saving (Ref. → Pago)</div>
-        <div class="kpi-value info" style="font-size:22px">${savingRef > 0 ? fmtBRL(savingRef) : '—'}</div>
-        <div class="kpi-sub" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
-          <span>${savingRef > 0 ? fmtPct(savingRefPct) + ' sobre referência' : 'Aguardando dados'}</span>
-          ${savingRef > 0 ? `<button onclick="openSavingModal('ref')" style="background:rgba(96,165,250,0.15);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;border-radius:6px;padding:3px 10px;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;white-space:nowrap" onmouseover="this.style.background='rgba(96,165,250,0.25)'" onmouseout="this.style.background='rgba(96,165,250,0.15)'">Ver pedidos →</button>` : ''}
-        </div>
-      </div>
+      <div class="kpi-card kv-mini-card"><div class="kv-mini-icon">💳</div><div><div class="kpi-label">Total Comprado</div><div class="kpi-value">${fmtBRL(totalPago)}</div><div class="kpi-sub">soma dos valores pagos</div></div></div>
+      <div class="kpi-card kv-mini-card"><div class="kv-mini-icon">📌</div><div><div class="kpi-label">Em Aberto</div><div class="kpi-value">${emAberto}</div><div class="kpi-sub">pedidos em andamento</div></div></div>
+      <div class="kpi-card kv-mini-card kv-mini-danger"><div class="kv-mini-icon">⚠️</div><div><div class="kpi-label">Atrasados</div><div class="kpi-value">${atrasados}</div><div class="kpi-sub">acima da data necessidade</div></div></div>
+      <div class="kpi-card kv-mini-card kv-mini-warn" onclick="openNFDetalhe()" title="Clique para ver pedidos pendentes"><div class="kv-mini-icon">🧾</div><div><div class="kpi-label">Tempo Médio — Lançar NF</div><div class="kpi-value">${avgNF === '—' ? '—' : avgNF + ' dias'}</div><div class="kpi-sub">${pendentesNF} pendente${pendentesNF===1?'':'s'}</div></div></div>
+      <div class="kpi-card kv-mini-card"><div class="kv-mini-icon">🎯</div><div><div class="kpi-label">Saving Ref. → Pago</div><div class="kpi-value">${savingRef > 0 ? fmtBRL(savingRef) : '—'}</div><div class="kpi-sub">${savingRef > 0 ? fmtPct(savingRefPct)+' sobre referência' : 'Aguardando dados'}</div></div></div>
     `;
   }
 
