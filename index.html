@@ -6,68 +6,74 @@
 <title>Kovalent · Sistema de Compras Nacionais</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/style.css?v=1.2.1">
 </head>
 <body class="auth-locked">
 
 
-<!-- ===================== LOGIN INICIAL v1.2.0 ===================== -->
+<!-- ===================== LOGIN INICIAL v1.2.1 ===================== -->
 <div id="auth-gate" class="auth-gate">
-  <div class="auth-panel">
-    <div class="auth-brand">
-      <div class="auth-mark">K</div>
-      <div>
-        <div class="auth-title">Compras Nacionais</div>
-        <div class="auth-subtitle">Grupo Kovalent · Acesso ao sistema</div>
+  <section class="auth-visual" aria-hidden="true">
+    <div class="auth-visual-badge">
+      <strong>SOLUÇÕES<br>QUE IMPULSIONAM<br>A SAÚDE</strong>
+    </div>
+  </section>
+
+  <section class="auth-side">
+    <div class="auth-side-title">COMPRAS NACIONAIS</div>
+    <div class="auth-side-subtitle">PLANEJAMENTO • AQUISIÇÃO • RESULTADOS</div>
+
+    <div class="auth-panel">
+      <div class="auth-heading">Bem-vindo(a)</div>
+      <div class="auth-help auth-help-center">Acesse o sistema de Compras Nacionais</div>
+
+      <div class="auth-tabs">
+        <button id="auth-tab-login" class="auth-tab active" type="button" onclick="showLoginView()">Login</button>
+        <button id="auth-tab-signup" class="auth-tab" type="button" onclick="showSignupView()">Cadastre-se</button>
+      </div>
+
+      <div id="auth-login-view">
+        <label class="auth-label" for="auth-user">Usuário ou e-mail</label>
+        <input class="auth-input" id="auth-user" type="text" autocomplete="username" placeholder="Digite seu usuário ou e-mail">
+        <label class="auth-label" for="auth-password">Senha</label>
+        <input class="auth-input" id="auth-password" type="password" autocomplete="current-password" placeholder="Digite sua senha" onkeydown="if(event.key==='Enter')loginFromGate()">
+        <div id="auth-login-error" class="auth-error"></div>
+        <button class="auth-primary" onclick="loginFromGate()">→ &nbsp; Entrar</button>
+
+        <div class="auth-divider"><span>Acessos internos</span></div>
+        <div class="auth-internal-grid">
+          <button class="auth-internal" type="button" onclick="document.getElementById('auth-user').value='COMPRADOR';document.getElementById('auth-password').focus()">
+            <span class="auth-internal-icon">🛒</span><span><b>COMPRADOR</b><small>Usar senha atual</small></span>
+          </button>
+          <button class="auth-internal" type="button" onclick="document.getElementById('auth-user').value='ALMOXARIFE';document.getElementById('auth-password').focus()">
+            <span class="auth-internal-icon">📦</span><span><b>ALMOXARIFE</b><small>Usar senha atual</small></span>
+          </button>
+        </div>
+        <div class="auth-signup-call">Ainda não tem uma conta? <button type="button" onclick="showSignupView()">Cadastre-se aqui →</button></div>
+      </div>
+
+      <div id="auth-signup-view" style="display:none">
+        <div class="auth-signup-title">Criar cadastro de solicitante</div>
+        <div class="auth-help auth-help-center">Use seu e-mail corporativo, escolha sua senha e informe seu setor.</div>
+        <label class="auth-label" for="signup-email">E-mail corporativo</label>
+        <input class="auth-input" id="signup-email" type="email" autocomplete="email" placeholder="nome@kovalent.com.br">
+        <label class="auth-label" for="signup-password">Senha</label>
+        <input class="auth-input" id="signup-password" type="password" autocomplete="new-password" placeholder="Mínimo de 6 caracteres">
+        <label class="auth-label" for="signup-sector">Setor</label>
+        <select class="auth-input" id="signup-sector">
+          <option value="">Selecione...</option>
+          <option>Logística</option><option>TI</option><option>Envase e Montagem</option><option>Fabricação</option>
+          <option>Assessoria Científica</option><option>Assistência Técnica</option><option>Marketing</option><option>Projetos</option>
+          <option>Diretoria</option><option>Financeiro</option><option>Comercial</option><option>Faturamento</option>
+          <option>Gerência</option><option>Regulatório</option><option>Garantia da Qualidade</option><option>Controle de Qualidade</option><option>RH</option>
+        </select>
+        <div id="auth-signup-error" class="auth-error"></div>
+        <button class="auth-primary" onclick="signupSolicitante()">Cadastrar e entrar</button>
+        <button class="auth-link" onclick="showLoginView()">← Voltar para o login</button>
       </div>
     </div>
-
-    <div id="auth-login-view">
-      <div class="auth-heading">Entrar</div>
-      <div class="auth-help">Solicitantes usam o e-mail corporativo. Comprador e Almoxarife usam o usuário do perfil.</div>
-      <label class="auth-label" for="auth-user">E-mail ou usuário</label>
-      <input class="auth-input" id="auth-user" type="text" autocomplete="username" placeholder="seu.email@kovalent.com.br ou COMPRADOR">
-      <label class="auth-label" for="auth-password">Senha</label>
-      <input class="auth-input" id="auth-password" type="password" autocomplete="current-password" placeholder="Sua senha" onkeydown="if(event.key==='Enter')loginFromGate()">
-      <div id="auth-login-error" class="auth-error"></div>
-      <button class="auth-primary" onclick="loginFromGate()">Entrar</button>
-      <div class="auth-divider"><span>Primeiro acesso?</span></div>
-      <button class="auth-secondary" onclick="showSignupView()">Criar cadastro de solicitante</button>
-    </div>
-
-    <div id="auth-signup-view" style="display:none">
-      <div class="auth-heading">Criar cadastro</div>
-      <div class="auth-help">Cadastre seu e-mail corporativo, escolha sua senha e informe seu setor.</div>
-      <label class="auth-label" for="signup-email">E-mail corporativo</label>
-      <input class="auth-input" id="signup-email" type="email" autocomplete="email" placeholder="nome@kovalent.com.br">
-      <label class="auth-label" for="signup-password">Senha</label>
-      <input class="auth-input" id="signup-password" type="password" autocomplete="new-password" placeholder="Mínimo de 6 caracteres">
-      <label class="auth-label" for="signup-sector">Setor</label>
-      <select class="auth-input" id="signup-sector">
-        <option value="">Selecione...</option>
-        <option>Logística</option>
-        <option>TI</option>
-        <option>Envase e Montagem</option>
-        <option>Fabricação</option>
-        <option>Assessoria Científica</option>
-        <option>Assistência Técnica</option>
-        <option>Marketing</option>
-        <option>Projetos</option>
-        <option>Diretoria</option>
-        <option>Financeiro</option>
-        <option>Comercial</option>
-        <option>Faturamento</option>
-        <option>Gerência</option>
-        <option>Regulatório</option>
-        <option>Garantia da Qualidade</option>
-        <option>Controle de Qualidade</option>
-        <option>RH</option>
-      </select>
-      <div id="auth-signup-error" class="auth-error"></div>
-      <button class="auth-primary" onclick="signupSolicitante()">Cadastrar e entrar</button>
-      <button class="auth-link" onclick="showLoginView()">← Voltar para o login</button>
-    </div>
-  </div>
+    <div class="auth-footer"><strong>Grupo Kovalent</strong><br><span>Conectando ciência, pessoas e um futuro mais saudável.</span></div>
+  </section>
 </div>
 
 <header>
@@ -664,6 +670,6 @@
   </div>
 </div>
 
-<script src="js/app.js?v=1.2.0"></script>
+<script src="js/app.js?v=1.2.1"></script>
 </body>
 </html>

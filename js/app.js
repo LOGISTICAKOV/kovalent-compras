@@ -4512,6 +4512,8 @@ function kvIsVisiblePedido(p) {
 function kvVisiblePedidos() { return (pedidos || []).filter(kvIsVisiblePedido); }
 
 function showSignupView() {
+  document.getElementById('auth-tab-login')?.classList.remove('active');
+  document.getElementById('auth-tab-signup')?.classList.add('active');
   document.getElementById('auth-login-view').style.display = 'none';
   document.getElementById('auth-signup-view').style.display = '';
   document.getElementById('auth-signup-error').textContent = '';
@@ -4519,6 +4521,8 @@ function showSignupView() {
 }
 
 function showLoginView() {
+  document.getElementById('auth-tab-signup')?.classList.remove('active');
+  document.getElementById('auth-tab-login')?.classList.add('active');
   document.getElementById('auth-signup-view').style.display = 'none';
   document.getElementById('auth-login-view').style.display = '';
   document.getElementById('auth-login-error').textContent = '';
