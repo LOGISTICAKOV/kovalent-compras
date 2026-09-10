@@ -700,3 +700,22 @@ body:not(.auth-locked) #tab-programadas>.page-title,body:not(.auth-locked) #tab-
 #saving-item-editor .data-table-wrap::-webkit-scrollbar-thumb{background:#7fa4c2;border-radius:999px;border:2px solid #eaf1f7}
 #saving-item-editor .data-table-wrap::-webkit-scrollbar-thumb:hover{background:#5f8eaf}
 #saving-item-editor .data-table-wrap{scrollbar-width:auto;scrollbar-color:#7fa4c2 #eaf1f7}
+
+/* v1.2.10 — rolagem horizontal sempre acessível na negociação por item */
+#saving-item-editor .data-table-wrap{
+  overflow-x:scroll!important;
+  overflow-y:hidden!important;
+  padding-bottom:4px!important;
+}
+#saving-item-editor .saving-scroll-control{
+  display:flex!important;
+  align-items:center;
+  gap:8px;
+  margin:8px 2px 2px;
+  padding:5px 8px;
+  background:#eaf4f8;
+  border:1px solid #cfe2ec;
+  border-radius:9px;
+}
+#saving-item-editor .saving-scroll-control span{font-size:11px;color:#52718a;white-space:nowrap}
+#saving-item-editor .saving-scroll-range{width:100%;min-width:0;cursor:ew-resize;accent-color:#078dde}

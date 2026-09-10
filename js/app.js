@@ -3804,6 +3804,7 @@ function buildSavingPorItemEditor(p, modo) {
     + '<div class="data-table-wrap"><table style="width:100%;font-size:13px"><thead><tr>'
     + '<th>Item</th><th>Fornecedor cotado</th><th>Valor cotado</th><th>Fornecedor comprado</th><th>Valor comprado</th><th>Observação</th><th>Saving</th>'
     + '</tr></thead><tbody>'+rows+'</tbody></table></div>'
+    + '<div class="saving-scroll-control"><span>↔ Deslize para ver os demais campos</span><input class="saving-scroll-range" type="range" min="0" max="1000" value="0" oninput="scrollSavingItemTable(this.value)"></div>'
     + '<div style="font-size:12px;color:var(--muted);margin-top:10px">O KPI de Saving usará a soma dos itens quando houver qualquer valor preenchido por item.</div>'
     + '</div>';
 }
@@ -4847,3 +4848,28 @@ document.addEventListener('DOMContentLoaded', async () => {
   const ok = await kvRestoreSession();
   if(!ok) kvShowGate();
 });
+
+
+// v1.2.10 — controle horizontal persistente da tabela de negociação
+function scrollSavingItemTable(value) {
+  const wrap = document.querySelector('#saving-item-editor .data-table-wrap');
+  if (!wrap) return;
+  const max = Math.max(0, wrap.scrollWidth - wrap.clientWidth);
+  wrap.scrollLeft = max * (Number(value || 0) / 1000);
+}
+
+function syncSavingItemScrollControl() {
+  const wrap = document.querySelector('#saving-item-editor .data-table-wrap');
+  const range = document.querySelector('#saving-item-editor .saving-scroll-range');
+  if (!wrap || !range || wrap.dataset.scrollSyncBound === '1') return;
+  wrap.dataset.scrollSyncBound = '1';
+  wrap.addEventListener('scroll', function () {
+    const max = Math.max(0, wrap.scrollWidth - wrap.clientWidth);
+    range.value = max ? Math.round((wrap.scrollLeft / max) * 1000) : 0;
+  }, {passive:true});
+}
+
+const kvSavingScrollObserver = new MutationObserver(function(){
+  if (document.getElementById('saving-item-editor')) syncSavingItemScrollControl();
+});
+if (document.body) kvSavingScrollObserver.observe(document.body,{childList:true,subtree:true});
