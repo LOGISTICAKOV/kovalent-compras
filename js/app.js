@@ -270,12 +270,12 @@ function renderAlmoxHist() {
     const subLabel = isCurrentMonth ? 'mês atual' : 'neste mês';
     histEl.innerHTML =
       '<div class="kpi-card" style="border-color:rgba(236,72,153,0.2)">'
-      + '<div class="kpi-label">🧪 Caixas Amostradas</div>'
+      + '<div class="kpi-label">🧪 Volumes Amostrados</div>'
       + '<div class="kpi-value" style="font-size:26px;color:#ec4899">' + cxMes + '</div>'
       + '<div class="kpi-sub">' + subLabel + '</div></div>'
 
       + '<div class="kpi-card" style="border-color:rgba(236,72,153,0.2)">'
-      + '<div class="kpi-label">🧪 Itens Amostrados</div>'
+      + '<div class="kpi-label">🧪 Unidades Amostradas</div>'
       + '<div class="kpi-value" style="font-size:26px;color:#ec4899">' + itMes + '</div>'
       + '<div class="kpi-sub">' + subLabel + '</div></div>'
 
@@ -316,12 +316,12 @@ function renderAlmoxHist() {
   if (mediaEl) {
     mediaEl.innerHTML =
       '<div class="kpi-card" style="background:rgba(236,72,153,0.04);border-color:rgba(236,72,153,0.15)">'
-      + '<div class="kpi-label">🧪 Média — Cx. Amostradas</div>'
+      + '<div class="kpi-label">🧪 Média — Volumes Amostrados</div>'
       + '<div class="kpi-value" style="font-size:22px;color:#ec4899">' + mediaCx + '</div>'
       + '<div class="kpi-sub">por mês (' + nMeses + ' mês' + (nMeses!==1?'es':'') + ' com dados)</div></div>'
 
       + '<div class="kpi-card" style="background:rgba(236,72,153,0.04);border-color:rgba(236,72,153,0.15)">'
-      + '<div class="kpi-label">🧪 Média — Itens Amostrados</div>'
+      + '<div class="kpi-label">🧪 Média — Unidades Amostradas</div>'
       + '<div class="kpi-value" style="font-size:22px;color:#ec4899">' + mediaIt + '</div>'
       + '<div class="kpi-sub">por mês (' + nMeses + ' mês' + (nMeses!==1?'es':'') + ' com dados)</div></div>'
 
@@ -683,7 +683,7 @@ function openModal(sc) {
         <th style="padding:8px; text-align:left; color:var(--muted)">Ref.</th>
         ${showVolume ? '<th style="padding:8px; text-align:left; color:#fb923c; font-weight:700">📦 Volume (cx)</th>' : ''}
         ${showAmostra ? '<th style="padding:8px; text-align:left; color:#ec4899; font-weight:700">🧪 Cx. Amostradas</th>' : ''}
-        ${showAmostra ? '<th style="padding:8px; text-align:left; color:#ec4899; font-weight:700">🧪 Itens Amostrados</th>' : ''}
+        ${showAmostra ? '<th style="padding:8px; text-align:left; color:#ec4899; font-weight:700">🧪 Unidades Amostradas</th>' : ''}
       </tr></thead>
       <tbody>${itensHtml}</tbody>
     </table>
@@ -824,6 +824,10 @@ function selectStatusOption(el, next) {
     extraFields = '<div class="form-group" style="margin-bottom:14px">'
       + '<label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">🧪 Data de Amostragem</label>'
       + '<input type="date" id="us-dataamostragem" value="' + new Date().toISOString().split('T')[0] + '" style="width:100%">'
+      + '</div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">'
+      + '<div><label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">📦 Volumes Amostrados *</label><input type="number" id="us-amovol" min="0" step="1" placeholder="0" style="width:100%"></div>'
+      + '<div><label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">🧪 Unidades Amostradas *</label><input type="number" id="us-amoun" min="0" step="1" placeholder="0" style="width:100%"></div>'
       + '</div>';
 
   } else if (next === 'Aguardando Retirada do Estoque') {
@@ -854,7 +858,7 @@ function selectStatusOption(el, next) {
       + '<input type="date" id="us-datareceb" value="' + new Date().toISOString().split('T')[0] + '" style="width:100%">'
       + '</div>'
       + '<div class="form-group" style="margin-bottom:14px">'
-      + '<label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">🧾 Nota Fiscal de Entrada *</label>'
+      + '<label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">🧾 Nota Fiscal de Entrada <span style="font-size:11px;text-transform:none">(opcional)</span></label>'
       + '<input type="text" id="us-nfe" placeholder="Nº da NF" style="width:100%">'
       + '</div>'
       + '<div class="form-group" style="margin-bottom:14px">'
@@ -1012,8 +1016,7 @@ function confirmUpdateStatus() {
 
   } else if (next === 'Lançar NF') {
     const nfe = document.getElementById('us-nfe')?.value?.trim();
-    if (!nfe) { toast('Informe o número da Nota Fiscal', 'error'); return; }
-    p.docNFE          = nfe;
+    if (nfe) p.docNFE = nfe;
     p.dataLancarNF    = today;
     p.dataRecebimento = document.getElementById('us-datareceb')?.value || today;
     const recebPor    = document.getElementById('us-recebido')?.value;
@@ -1027,6 +1030,14 @@ function confirmUpdateStatus() {
 
   } else if (next === 'Amostragem') {
     p.dataAmostragem = document.getElementById('us-dataamostragem')?.value || today;
+    const amoVol = parseQtd(document.getElementById('us-amovol')?.value);
+    const amoUn  = parseQtd(document.getElementById('us-amoun')?.value);
+    if (amoVol < 0 || amoUn < 0) { toast('Informe quantidades válidas para a amostragem.', 'error'); return; }
+    if (!amoVol && !amoUn) { toast('Informe a quantidade de volumes ou unidades amostradas.', 'error'); return; }
+    normalizePedidoItems(p);
+    if (!p.itens.length) p.itens = [{}];
+    // O KPI soma estes campos nos itens. O primeiro item guarda os totais informados nesta etapa.
+    p.itens.forEach((item, idx) => { item.amoCaixas = idx === 0 ? amoVol : 0; item.amoItens = idx === 0 ? amoUn : 0; });
 
   } else if (next === 'Aguardando Retirada do Estoque') {
     p.dataAguardandoRet = document.getElementById('us-dataretirada')?.value || today;
@@ -1519,13 +1530,13 @@ function renderKPIAlmox() {
   if (almoxRow2) {
     almoxRow2.innerHTML =
       '<div class="kpi-card" style="border-color:rgba(236,72,153,0.2)">'
-      + '<div class="kpi-label">🧪 Caixas Amostradas</div>'
+      + '<div class="kpi-label">🧪 Volumes Amostrados</div>'
       + '<div class="kpi-value" style="font-size:26px;color:#ec4899">' + totalAmoCxMes + '</div>'
       + '<div class="kpi-sub" style="display:flex;justify-content:space-between">'
       + '<span>este mês</span><span style="color:var(--muted)">total: ' + totalAmoCx + '</span></div></div>'
 
       + '<div class="kpi-card" style="border-color:rgba(236,72,153,0.2)">'
-      + '<div class="kpi-label">🧪 Itens Amostrados</div>'
+      + '<div class="kpi-label">🧪 Unidades Amostradas</div>'
       + '<div class="kpi-value" style="font-size:26px;color:#ec4899">' + totalAmoItMes + '</div>'
       + '<div class="kpi-sub" style="display:flex;justify-content:space-between">'
       + '<span>este mês</span><span style="color:var(--muted)">total: ' + totalAmoIt + '</span></div></div>'
@@ -2984,6 +2995,19 @@ function openModal(sc) {
   document.getElementById('modal-overlay').classList.add('open');
 }
 
+function setRecebimentoTipo(tipo) {
+  document.querySelectorAll('[data-rec-tipo]').forEach(btn => {
+    const ativo = btn.dataset.recTipo === tipo;
+    btn.className = ativo ? 'btn btn-primary' : 'btn btn-secondary';
+  });
+  document.getElementById('rec-tipo').value = tipo;
+  document.querySelectorAll('.rec-qtd').forEach(inp => {
+    if (tipo === 'total') inp.value = inp.max || '';
+    else inp.value = '';
+    inp.readOnly = tipo === 'total';
+  });
+}
+
 function openRecebimentoModal(sc, onlyIdx) {
   const p = normalizePedidoItems(pedidos.find(x => x.sc === sc));
   if (!p) return;
@@ -2995,22 +3019,28 @@ function openRecebimentoModal(sc, onlyIdx) {
     + '<td style="padding:8px">'+escapeHTML(item.descricao||'—')+'<div style="font-size:11px;color:var(--muted)">Saldo: '+formatQty(saldo)+' '+escapeHTML(item.unidade||'')+'</div></td>'
     + '<td style="padding:8px;text-align:center">'+formatQty(getItemQtd(item))+'</td>'
     + '<td style="padding:8px;text-align:center">'+formatQty(getItemRecebido(item))+'</td>'
-    + '<td style="padding:8px"><input type="number" class="rec-qtd" data-idx="'+idx+'" min="0" max="'+saldo+'" step="0.01" placeholder="0" style="width:90px"></td>'
+    + '<td style="padding:8px"><input type="number" class="rec-qtd" data-idx="'+idx+'" min="0" max="'+saldo+'" step="0.01" placeholder="0" style="width:100px"></td>'
     + '</tr>').join('');
 
   document.getElementById('modal-content').innerHTML =
     '<div class="modal-header"><div><div style="font-family:Inter,sans-serif;font-size:20px;font-weight:700">📦 Registrar Recebimento</div>'
-    + '<div style="color:var(--muted);font-size:13px;margin-top:4px">'+escapeHTML(sc)+' · informe a NF e a quantidade recebida por item</div></div>'
+    + '<div style="color:var(--muted);font-size:13px;margin-top:4px">'+escapeHTML(sc)+' · registre recebimento total ou parcial</div></div>'
     + '<button class="modal-close" onclick="openModal(\''+sc+'\')">✕</button></div>'
-    + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px">'
+    + '<input type="hidden" id="rec-tipo" value="parcial">'
+    + '<div style="display:flex;gap:8px;margin-bottom:16px"><button type="button" class="btn btn-secondary" data-rec-tipo="parcial" onclick="setRecebimentoTipo(\'parcial\')">📦 Recebimento Parcial</button><button type="button" class="btn btn-secondary" data-rec-tipo="total" onclick="setRecebimentoTipo(\'total\')">✅ Recebimento Total</button></div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">'
     + '<div><label>NF de Entrada *</label><input id="rec-nf" type="text" placeholder="Ex: 123456" style="width:100%"></div>'
+    + '<div><label>Quantidade de Volumes Recebidos *</label><input id="rec-volumes" type="number" min="1" step="1" placeholder="Ex: 4" style="width:100%"></div>'
+    + '</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">'
     + '<div><label>Data de Recebimento *</label><input id="rec-data" type="date" value="'+today+'" style="width:100%"></div>'
-    + '<div><label>Recebido por</label><input id="rec-por" type="text" placeholder="Nome" style="width:100%"></div>'
+    + '<div><label>Recebido por *</label><input id="rec-por" type="text" placeholder="Nome de quem recebeu" style="width:100%"></div>'
     + '</div>'
     + '<div class="data-table-wrap" style="margin-bottom:16px"><table style="width:100%;font-size:13px"><thead><tr><th>Item</th><th>Qtd.</th><th>Já Recebido</th><th>Receber agora</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
     + '<div style="margin-bottom:16px"><label>Observação</label><textarea id="rec-obs" placeholder="Opcional" style="width:100%;min-height:60px"></textarea></div>'
     + '<div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn btn-secondary" onclick="openModal(\''+sc+'\')">Cancelar</button><button class="btn btn-primary" onclick="confirmRecebimento(\''+sc+'\')">Salvar Recebimento</button></div>';
   document.getElementById('modal-overlay').classList.add('open');
+  setRecebimentoTipo('parcial');
 }
 
 async function confirmRecebimento(sc) {
@@ -3020,11 +3050,16 @@ async function confirmRecebimento(sc) {
   const data = document.getElementById('rec-data')?.value;
   const recebidoPor = document.getElementById('rec-por')?.value?.trim();
   const obs = document.getElementById('rec-obs')?.value?.trim();
+  const volumes = parseQtd(document.getElementById('rec-volumes')?.value);
+  const tipo = document.getElementById('rec-tipo')?.value || 'parcial';
   if (!nf) { toast('Informe o número da NF de entrada.', 'error'); return; }
+  if (!volumes || volumes <= 0) { toast('Informe a quantidade de volumes recebidos.', 'error'); return; }
   if (!data) { toast('Informe a data de recebimento.', 'error'); return; }
+  if (!recebidoPor) { toast('Informe o nome de quem recebeu.', 'error'); return; }
 
   let totalLinhas = 0;
   let erroQtd = '';
+  const inputsValidos = [...document.querySelectorAll('.rec-qtd')].filter(inp => parseQtd(inp.value) > 0);
   document.querySelectorAll('.rec-qtd').forEach(inp => {
     const idx = parseInt(inp.dataset.idx, 10);
     const qtd = parseQtd(inp.value);
@@ -3037,23 +3072,33 @@ async function confirmRecebimento(sc) {
       return;
     }
     item.recebimentos = item.recebimentos || [];
-    item.recebimentos.push({ nf, data, qtd, recebidoPor, obs, criadoEm: new Date().toISOString() });
+    // Volumes pertencem ao recebimento/NF. Para não duplicar em vários itens, ficam na primeira linha recebida.
+    const volRegistro = totalLinhas === 0 ? volumes : 0;
+    item.recebimentos.push({ nf, data, qtd, volumes: volRegistro, tipo, recebidoPor, obs, criadoEm: new Date().toISOString() });
     normalizeItem(item);
     totalLinhas++;
   });
   if (erroQtd) { toast(erroQtd, 'error'); return; }
   if (!totalLinhas) { toast('Informe quantidade recebida para ao menos um item.', 'error'); return; }
 
+  // Recalcula volumes a partir do histórico para manter o KPI correto inclusive em recebimentos parciais sucessivos.
+  p.itens.forEach(item => {
+    item.volume = (item.recebimentos || []).reduce((s,r) => s + parseQtd(r.volumes), 0);
+  });
   recalcPedidoRecebimento(p);
   p.dataRecebimento = data;
-  if (recebidoPor) p.recebidoPor = recebidoPor;
+  p.dataLancarNF = data;
+  p.recebidoPor = recebidoPor;
+  p.status = 'Lançar NF';
   if (obs) p.obs = (p.obs ? p.obs + ' | ' : '') + '[Recebimento NF '+nf+'] ' + obs;
 
   await dbUpdate(p);
-  toast('Recebimento registrado para NF ' + nf, 'success');
+  toast((tipo === 'total' ? 'Recebimento total' : 'Recebimento parcial') + ' registrado. Pedido avançado para Lançar NF.', 'success');
   openModal(sc);
   renderPedidosTable();
   renderDashboard();
+  try { renderRecebimentosCentral(); } catch(e) {}
+  try { renderKPIAlmox(); } catch(e) {}
 }
 
 function statusKey(s) {
@@ -3346,6 +3391,7 @@ function getTodosRecebimentos() {
           nf: r.nf || r.numeroNF || '',
           data: r.data || '',
           qtd: parseQtd(r.qtd ?? r.quantidade),
+          volumes: parseQtd(r.volumes),
           recebidoPor: r.recebidoPor || '',
           obs: r.obs || '',
           criadoEm: r.criadoEm || ''
@@ -3363,13 +3409,14 @@ function renderRecebimentosHistorico(container) {
     return;
   }
 
-  container.innerHTML = '<table><thead><tr><th>Data</th><th>NF</th><th>SC</th><th>Item</th><th>Qtd.</th><th>Recebido por</th><th>Obs.</th></tr></thead><tbody>'
+  container.innerHTML = '<table><thead><tr><th>Data</th><th>NF</th><th>SC</th><th>Item</th><th>Qtd.</th><th>Volumes</th><th>Recebido por</th><th>Obs.</th></tr></thead><tbody>'
     + recs.map(r => '<tr class="clickable" onclick="openModal(\''+r.sc+'\')">'
       + '<td>'+formatDate(r.data)+'</td>'
       + '<td><strong style="color:var(--accent2)">NF '+escapeHTML(r.nf || '—')+'</strong></td>'
       + '<td>'+escapeHTML(r.sc)+'</td>'
       + '<td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escapeHTML(r.item)+'">'+escapeHTML(r.item)+'</td>'
       + '<td>'+formatQty(r.qtd)+' '+escapeHTML(r.unidade)+'</td>'
+      + '<td>'+formatQty(r.volumes || 0)+'</td>'
       + '<td>'+escapeHTML(r.recebidoPor || '—')+'</td>'
       + '<td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escapeHTML(r.obs || '')+'">'+escapeHTML(r.obs || '—')+'</td>'
       + '</tr>').join('')
