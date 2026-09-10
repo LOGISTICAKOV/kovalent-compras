@@ -31,3 +31,9 @@ v1.2.5: reestruturação visual da tela Solicitar para reproduzir o mockup aprov
 - Cards principais e operacionais reorganizados.
 - Gráfico mensal compactado e responsivo.
 - Status, SLA, saving por departamento e atrasos reorganizados sem alterar a lógica dos dados.
+
+
+## v1.2.8
+- Corrige KPI Almoxarifado que deixou de renderizar após o redesign do Painel de KPI.
+- IDs do título/subtítulo restaurados e switchKPI tornado compatível com o novo layout.
+- KPI Almoxarifado agora atualiza após recebimentos e recargas em tempo real.

@@ -348,7 +348,10 @@ function initRealtime() {
         if (active) {
           const tab = active.id.replace('tab-','');
           if (tab === 'pedidos') renderPedidosTable();
-          if (tab === 'painel') renderDashboard();
+          if (tab === 'painel') {
+            renderDashboard();
+            if (window._kpiView === 'almox') renderKPIAlmox();
+          }
           if (tab === 'programadas') renderProgramadasTable();
         }
       }
@@ -1222,6 +1225,11 @@ function renderDashboard() {
       }).join('')
     }</tbody></table>`;
   }
+
+  // Mantém o KPI do almoxarifado sincronizado quando essa visão estiver ativa.
+  if (window._kpiView === 'almox') {
+    try { renderKPIAlmox(); } catch (e) { console.error('Erro ao atualizar KPI Almoxarifado:', e); }
+  }
 }
 
 // =========================================================
@@ -1401,13 +1409,15 @@ function switchKPI(view) {
   const btnA = document.getElementById('btn-kpi-almox');
   if (btnC) btnC.classList.toggle('active', view === 'compras');
   if (btnA) btnA.classList.toggle('active',   view === 'almox');
-  document.getElementById('painel-title').textContent = view === 'compras' ? 'KPI Compras' : 'KPI Almoxarifado';
+  const painelTitle = document.getElementById('painel-title');
+  if (painelTitle) painelTitle.textContent = view === 'compras' ? 'Painel de KPI' : 'KPI Almoxarifado';
   if (view === 'almox' && !window.compradorMode && window.almoxarifeMode) {
     const btnC = document.getElementById('btn-kpi-compras');
     if (btnC) btnC.style.display = 'none';
   }
-  document.getElementById('painel-sub').textContent   = view === 'compras'
-    ? 'Indicadores de desempenho das compras nacionais'
+  const painelSub = document.getElementById('painel-sub');
+  if (painelSub) painelSub.textContent = view === 'compras'
+    ? 'Indicadores que impulsionam melhores decisões.'
     : 'Indicadores operacionais do almoxarifado';
   if (view === 'almox') renderKPIAlmox();
 }
