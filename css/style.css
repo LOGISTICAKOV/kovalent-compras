@@ -672,3 +672,31 @@ body:not(.auth-locked) #tab-programadas>.page-title,body:not(.auth-locked) #tab-
 @media(max-width:1180px){#tab-painel #kpi-grid.kv-kpi-primary{grid-template-columns:repeat(2,1fr)!important}#tab-painel #kpi-fin-grid.kv-kpi-secondary{grid-template-columns:repeat(3,1fr)!important}.kv-kpi-dashboard-main,.kv-kpi-dashboard-secondary{grid-template-columns:1fr!important}}
 @media(max-width:900px){#tab-painel .kv-kpi-content{padding:18px 22px 40px!important}#tab-painel .kv-kpi-topline{align-items:flex-start;flex-direction:column}#tab-painel #kpi-fin-grid.kv-kpi-secondary{grid-template-columns:repeat(2,1fr)!important}}
 @media(max-width:620px){#tab-painel #kpi-grid.kv-kpi-primary,#tab-painel #kpi-fin-grid.kv-kpi-secondary{grid-template-columns:1fr!important}#tab-painel .kv-kpi-card-head{align-items:flex-start!important;flex-direction:column}#tab-painel .kv-chart-container,#tab-painel #compras-chart{height:180px!important}}
+
+/* v1.2.9 — correção da rolagem horizontal no editor de negociação por item */
+#saving-item-editor .data-table-wrap{
+  display:block!important;
+  width:100%!important;
+  max-width:100%!important;
+  overflow-x:auto!important;
+  overflow-y:hidden!important;
+  padding-bottom:10px!important;
+  border-radius:10px!important;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-gutter:stable;
+}
+#saving-item-editor .data-table-wrap table{
+  width:max-content!important;
+  min-width:1020px!important;
+  max-width:none!important;
+  table-layout:auto!important;
+}
+#saving-item-editor .data-table-wrap th,
+#saving-item-editor .data-table-wrap td{
+  white-space:nowrap!important;
+}
+#saving-item-editor .data-table-wrap::-webkit-scrollbar{height:12px}
+#saving-item-editor .data-table-wrap::-webkit-scrollbar-track{background:#eaf1f7;border-radius:999px}
+#saving-item-editor .data-table-wrap::-webkit-scrollbar-thumb{background:#7fa4c2;border-radius:999px;border:2px solid #eaf1f7}
+#saving-item-editor .data-table-wrap::-webkit-scrollbar-thumb:hover{background:#5f8eaf}
+#saving-item-editor .data-table-wrap{scrollbar-width:auto;scrollbar-color:#7fa4c2 #eaf1f7}
