@@ -4720,18 +4720,32 @@ async function kvEnterInternalRole(role) {
 
 function kvConfigureNavigationForRole() {
   const isSolic = window.kvAccessRole === 'solicitante';
+
+  // Abas que todos os perfis podem visualizar.
   ['nav-solicitar','nav-programadas','nav-pedidos'].forEach(id => {
-    const b=document.getElementById(id); if(b) b.style.display='';
+    const b = document.getElementById(id);
+    if (b) b.style.display = '';
   });
+
+  const restritas = ['nav-recebimentos','nav-painel','nav-config'];
+
   if (isSolic) {
-    ['painel','config','recebimentos'].forEach(tab => {
-      const b=document.getElementById('nav-'+tab); if(!b) return;
-      b.classList.add('locked');
-      b.setAttribute('onclick', `kvRestrictedForSolicitante('${tab}')`);
-      const l=b.querySelector('.lock-icon'); if(l) l.textContent='🔒';
+    // Para o solicitante, não faz sentido exibir áreas às quais ele não tem acesso.
+    restritas.forEach(id => {
+      const b = document.getElementById(id);
+      if (b) b.style.display = 'none';
     });
-    const ld=document.getElementById('btn-lancamento-direto'); if(ld) ld.style.display='none';
+    const ld = document.getElementById('btn-lancamento-direto');
+    if (ld) ld.style.display = 'none';
+    return;
   }
+
+  // Ao entrar como Comprador ou Almoxarife, restaura as abas antes de aplicar
+  // as permissões específicas de cada perfil.
+  restritas.forEach(id => {
+    const b = document.getElementById(id);
+    if (b) b.style.display = '';
+  });
 }
 
 function kvRestrictedForSolicitante(tab) {
