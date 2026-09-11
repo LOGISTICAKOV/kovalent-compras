@@ -2760,6 +2760,12 @@ function pedidoTemRecebimento(p) {
   return (p.itens || []).some(i => getItemRecebido(i) > 0);
 }
 
+function pedidoRecebidoTotal(p){
+  const itens = Array.isArray(p && p.itens) ? p.itens : [];
+  return itens.length > 0 && itens.every(it => Number(it.qtdRecebida || 0) >= Number(it.qtd || it.quantidade || 0));
+}
+
+
 function pedidoTodosItensRecebidos(p) {
   const validos = (p.itens || []).filter(i => getItemQtd(i) > 0 && getItemStatus(i) !== 'Cancelado');
   return validos.length > 0 && validos.every(i => getItemRecebido(i) >= getItemQtd(i));
@@ -2912,7 +2918,7 @@ function openModal(sc) {
     { label:'Pedido de Compra', icon:'📝', status: stepStatus(p.status, 'Pedido de Compra'), date: p.dataPedidoCompra||'', note: p.docPC ? `PC: ${p.docPC}` : '' },
     { label:'Aguardando Pagamento', icon:'💳', status: stepStatus(p.status, 'Aguardando Pagamento'), date: p.dataAguardando||'', note: p.docFatura ? `Fat.: ${p.docFatura}` : '' },
     { label:'A Caminho', icon:'🚚', status: stepStatus(p.status, 'A Caminho'), date: p.dataACaminho||'', note: p.rastreio ? `Rastreio: ${p.rastreio}` : '' },
-    { label:'Recebimento Parcial', icon:'📦', status: stepStatus(p.status, 'Recebimento Parcial'), date: p.dataLancarNF ? formatDate(p.dataLancarNF) : '', note: pedidoTemRecebimento(p) ? 'Há itens recebidos parcialmente' : '' },
+    { label:'Recebido', icon:'📦', status: stepStatus(p.status, 'Recebimento Parcial'), date: p.dataLancarNF ? formatDate(p.dataLancarNF) : '', note: pedidoTemRecebimento(p) ? (pedidoRecebidoTotal(p) ? 'Recebimento total registrado' : 'Recebimento parcial registrado') : '' },
     { label:'Lançar NF', icon:'🧾', status: stepStatus(p.status, 'Lançar NF'), date: p.dataLancarNF||'', note: p.docNFE ? `NF(s): ${p.docNFE}` : '' },
     { label:'Conferência', icon:'🔍', status: stepStatus(p.status, 'Conferência'), date: p.dataConferencia ? formatDate(p.dataConferencia) : '', note: '' },
     { label:'Aguardando Identificação', icon:'🏷️', status: stepStatus(p.status, 'Aguardando Identificação'), date: p.dataAguardandoId ? formatDate(p.dataAguardandoId) : '', note: '' },
