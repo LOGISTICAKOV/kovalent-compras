@@ -4994,3 +4994,121 @@ const kvSavingScrollObserver = new MutationObserver(function(){
   if (document.getElementById('saving-item-editor')) syncSavingItemScrollControl();
 });
 if (document.body) kvSavingScrollObserver.observe(document.body,{childList:true,subtree:true});
+
+// =========================================================
+// v1.2.15 — SC GLOBAL / EVITA DUPLICIDADE ENTRE SOLICITANTES
+// O contador antigo usava localStorage, que é local a cada navegador.
+// Agora a próxima SC é calculada a partir das SCs existentes no Supabase
+// e o INSERT só entra na tela depois de confirmado pelo banco.
+// =========================================================
+async function kvGetNextSC() {
+  const year = new Date().getFullYear();
+  try {
+    const res = await fetch(SUPA_URL + '/rest/v1/pedidos?select=sc&order=created_at.desc', { headers: SUPA_HEADERS });
+    if (!res.ok) throw new Error(await res.text());
+    const rows = await res.json();
+    let max = 0;
+    (rows || []).forEach(r => {
+      const m = String(r.sc || '').match(new RegExp('^SC-' + year + '-(\\d+)$'));
+      if (m) max = Math.max(max, parseInt(m[1], 10) || 0);
+    });
+    return `SC-${year}-${String(max + 1).padStart(3, '0')}`;
+  } catch (e) {
+    console.error('Erro ao calcular próxima SC:', e);
+    const localMax = pedidos.reduce((max, p) => {
+      const m = String(p.sc || '').match(new RegExp('^SC-' + year + '-(\\d+)$'));
+      return m ? Math.max(max, parseInt(m[1], 10) || 0) : max;
+    }, 0);
+    return `SC-${year}-${String(localMax + 1).padStart(3, '0')}`;
+  }
+}
+
+async function kvInsertPedidoSeguro(pedido) {
+  // Em caso de dois usuários enviarem exatamente ao mesmo tempo,
+  // recalcula a SC e tenta novamente sem criar pedido fantasma na tela.
+  for (let tentativa = 0; tentativa < 5; tentativa++) {
+    pedido.sc = await kvGetNextSC();
+    const res = await fetch(SUPA_URL + '/rest/v1/pedidos', {
+      method: 'POST',
+      headers: { ...SUPA_HEADERS, 'Prefer': 'return=representation' },
+      body: JSON.stringify(toDB(pedido))
+    });
+    if (res.ok) {
+      const salvo = await res.json().catch(() => []);
+      return { ok: true, pedido: salvo && salvo[0] ? normalizePedidoItems(fromDB(salvo[0])) : pedido };
+    }
+    const txt = await res.text();
+    let code = '';
+    try { code = JSON.parse(txt).code || ''; } catch (_) {}
+    if (res.status === 409 || code === '23505') continue;
+    return { ok: false, erro: txt };
+  }
+  return { ok: false, erro: 'Não foi possível reservar um número de solicitação após várias tentativas.' };
+}
+
+submitSolicitacao = async function() {
+  if (window.kvAccessRole === 'solicitante') kvApplySolicitanteIdentity();
+
+  const empresa = document.getElementById('f-empresa').value;
+  const solicitante = document.getElementById('f-solicitante').value.trim();
+  const depto = document.getElementById('f-depto').value;
+  const prioridade = document.getElementById('f-prioridade').value;
+  const necessidade = document.getElementById('f-necessidade').value;
+  const justificativa = document.getElementById('f-justificativa').value.trim();
+  const rows = document.querySelectorAll('#items-body .item-row');
+  const items = [];
+  rows.forEach(r => {
+    const inputs = r.querySelectorAll('input, select');
+    const desc = inputs[0].value.trim();
+    if (desc) items.push(normalizeItem({ descricao: desc, unidade: inputs[1].value, qtd: inputs[2].value || '1', ref: inputs[3].value, qtdRecebida: 0, statusItem: 'Pendente', recebimentos: [] }));
+  });
+
+  if (!empresa || !solicitante || !depto || !prioridade || !necessidade || !justificativa) {
+    toast('Preencha todos os campos obrigatórios (*)', 'error'); return;
+  }
+  if (items.length === 0) { toast('Adicione pelo menos um item à solicitação', 'error'); return; }
+
+  const btn = document.querySelector('[onclick="submitSolicitacao()"]');
+  const oldText = btn ? btn.innerHTML : '';
+  if (btn) { btn.disabled = true; btn.innerHTML = 'Salvando...'; }
+
+  try {
+    const novoPedido = normalizePedidoItems({
+      sc: '', empresa, data: document.getElementById('f-data').value, solicitante, departamento: depto, prioridade,
+      necessidade, tipo: document.getElementById('f-tipo').value, itens: items,
+      fornecedorSug: document.getElementById('f-fornecedor').value, linkProduto: document.getElementById('f-link').value,
+      valorRef: parseFloat(document.getElementById('f-valref').value)||0, justificativa,
+      aprovador: document.getElementById('f-aprovador').value, obs: document.getElementById('f-obs').value,
+      status: 'Solicitado', dataCriacao: new Date().toISOString(), docNFE: ''
+    });
+
+    const resultado = await kvInsertPedidoSeguro(novoPedido);
+    if (!resultado.ok) {
+      console.error('Falha ao salvar solicitação:', resultado.erro);
+      toast('Não foi possível salvar a solicitação. Nenhum pedido foi criado. Tente novamente.', 'error');
+      return;
+    }
+
+    const salvo = resultado.pedido;
+    pedidos = pedidos.filter(p => p.sc !== salvo.sc);
+    pedidos.unshift(salvo);
+    toast(`✔ Solicitação ${salvo.sc} registrada com sucesso!`, 'success');
+    clearForm();
+    document.getElementById('f-sc').value = await kvGetNextSC();
+    addItemRow();
+    renderPedidosTable();
+    renderProgramadasTable();
+    renderDashboard();
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = oldText; }
+  }
+};
+
+// Atualiza o número sugerido após cada carga do banco.
+const _kvDbLoadV1215 = dbLoad;
+dbLoad = async function() {
+  const ok = await _kvDbLoadV1215();
+  const scEl = document.getElementById('f-sc');
+  if (scEl) scEl.value = await kvGetNextSC();
+  return ok;
+};
