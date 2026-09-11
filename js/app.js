@@ -10,6 +10,47 @@ const SUPA_HEADERS = {
   'Prefer': 'return=minimal'
 };
 
+// =========================================================
+// v1.2.14 — RESPONSÁVEL PELA FINALIZAÇÃO
+// Mantém separado de "recebidoPor" (quem recebeu fisicamente o material).
+// O nome é persistido dentro de obs com um marcador técnico, evitando
+// necessidade de nova coluna no Supabase.
+// =========================================================
+function getFinalizadoPor(p) {
+  if (!p) return '';
+  if (p.finalizadoPor) return String(p.finalizadoPor).trim();
+  const m = String(p.obs || '').match(/\[FINALIZADO_POR:([^\]]+)\]/i);
+  return m ? String(m[1]).trim() : '';
+}
+
+function setFinalizadoPor(p, nome) {
+  if (!p) return;
+  nome = String(nome || '').trim();
+  let obs = String(p.obs || '')
+    .replace(/\s*\|?\s*\[FINALIZADO_POR:[^\]]*\]/ig, '')
+    .replace(/^\s*\|\s*|\s*\|\s*$/g, '')
+    .trim();
+  p.finalizadoPor = nome;
+  p.obs = nome ? (obs ? obs + ' | ' : '') + '[FINALIZADO_POR:' + nome + ']' : obs;
+}
+
+function clearFinalizadoPor(p) {
+  if (!p) return;
+  p.finalizadoPor = '';
+  p.obs = String(p.obs || '')
+    .replace(/\s*\|?\s*\[FINALIZADO_POR:[^\]]*\]/ig, '')
+    .replace(/^\s*\|\s*|\s*\|\s*$/g, '')
+    .trim();
+}
+
+function getObsPublica(p) {
+  if (!p) return '';
+  return String(p.obs || '')
+    .replace(/\s*\|?\s*\[FINALIZADO_POR:[^\]]*\]/ig, '')
+    .replace(/^\s*\|\s*|\s*\|\s*$/g, '')
+    .trim();
+}
+
 // Map camelCase fields to snake_case DB columns
 function toDB(p) {
   return {
@@ -599,7 +640,7 @@ function openModal(sc) {
     { label:'Aguardando Identificação',        icon:'🏷️', status: stepStatus(p.status, 'Aguardando Identificação'),             date: p.dataAguardandoId ? formatDate(p.dataAguardandoId) : '',   note: '' },
     { label:'Amostragem',                      icon:'🧪', status: stepStatus(p.status, 'Amostragem'),                           date: p.dataAmostragem ? formatDate(p.dataAmostragem) : '',     note: '' },
     { label:'Aguardando Retirada do Estoque',  icon:'📤', status: stepStatus(p.status, 'Aguardando Retirada do Estoque'),       date: p.dataAguardandoRet ? formatDate(p.dataAguardandoRet) : '',  note: '' },
-    { label:'Finalizado',                      icon:'✅', status: stepStatus(p.status, 'Finalizado'),                           date: p.dataFinalizado||'',     note: p.recebidoPor ? `Por: ${p.recebidoPor}` : '' },
+    { label:'Finalizado',                      icon:'✅', status: stepStatus(p.status, 'Finalizado'),                           date: p.dataFinalizado||'',     note: (p.dataFinalizado && getFinalizadoPor(p)) ? `Por: ${getFinalizadoPor(p)}` : '' },
   ];
 
   const tlHtml = steps.map((s,i) => `
@@ -692,7 +733,7 @@ function openModal(sc) {
     <div class="timeline">${tlHtml}</div>
 
     ${p.justificativa ? `<div style="margin-top:20px; background:var(--surface2); border-radius:10px; padding:14px"><div style="font-size:11px; color:var(--muted); margin-bottom:6px">JUSTIFICATIVA</div><div style="font-size:13px">${p.justificativa}</div></div>` : ''}
-    ${p.obs ? `<div style="margin-top:12px; background:var(--surface2); border-radius:10px; padding:14px"><div style="font-size:11px; color:var(--muted); margin-bottom:6px">OBSERVAÇÕES</div><div style="font-size:13px">${p.obs}</div></div>` : ''}
+    ${getObsPublica(p) ? `<div style="margin-top:12px; background:var(--surface2); border-radius:10px; padding:14px"><div style="font-size:11px; color:var(--muted); margin-bottom:6px">OBSERVAÇÕES</div><div style="font-size:13px">${getObsPublica(p)}</div></div>` : ''}
 
     ${(p.valorCotacao || p.valorPago || p.valorRef) ? '<div style="margin-top:16px;background:rgba(0,169,157,0.06);border:1px solid rgba(0,169,157,0.2);border-radius:12px;padding:16px"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px">💰 Resumo Financeiro</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px">' + (p.valorRef?'<div style="text-align:center"><div style="font-size:11px;color:var(--muted)">Referência</div><div style="font-size:15px;font-weight:600;color:#60a5fa">R$ '+Number(p.valorRef).toLocaleString("pt-BR",{minimumFractionDigits:2})+'</div></div>':'')+(p.valorCotacao?'<div style="text-align:center"><div style="font-size:11px;color:var(--muted)">1ª Cotação</div><div style="font-size:15px;font-weight:600;color:#f59e0b">R$ '+Number(p.valorCotacao).toLocaleString("pt-BR",{minimumFractionDigits:2})+'</div></div>':'')+(p.valorPago?'<div style="text-align:center"><div style="font-size:11px;color:var(--muted)">Valor Pago</div><div style="font-size:15px;font-weight:600;color:#34d399">R$ '+Number(p.valorPago).toLocaleString("pt-BR",{minimumFractionDigits:2})+'</div></div>':'')+(p.saving?'<div style="text-align:center"><div style="font-size:11px;color:var(--muted)">Saving</div><div style="font-size:15px;font-weight:700;color:#34d399">R$ '+Number(p.saving).toLocaleString("pt-BR",{minimumFractionDigits:2})+(p.valorCotacao?'<div style="font-size:11px;font-weight:400">'+( p.saving/p.valorCotacao*100).toFixed(1)+'%</div>':'')+'</div></div>':'')+'</div></div>' : ''}
   `;
@@ -852,6 +893,13 @@ function selectStatusOption(el, next) {
       + '<input type="date" id="us-prev" style="width:100%">'
       + '</div>';
 
+  } else if (next === 'Finalizado') {
+    extraFields = '<div class="form-group" style="margin-bottom:14px">'
+      + '<label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">✅ Nome de quem está finalizando *</label>'
+      + '<input type="text" id="us-finalizado-por" placeholder="Nome completo" autocomplete="off" style="width:100%">'
+      + '<div style="font-size:11px;color:var(--muted);margin-top:6px">Este nome será exibido somente quando a solicitação for realmente finalizada.</div>'
+      + '</div>';
+
   } else if (next === 'Lançar NF') {
     extraFields = '<div class="form-group" style="margin-bottom:14px">'
       + '<label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">📅 Data de Entrega *</label>'
@@ -968,6 +1016,7 @@ function clearStageDataAfterStatus(p, nextStatus) {
 
   if (nextIdx < idx('Finalizado')) {
     p.dataFinalizado = '';
+    clearFinalizadoPor(p);
   }
 
   return before !== JSON.stringify(p);
@@ -1044,7 +1093,10 @@ function confirmUpdateStatus() {
     if (!p.dataAguardandoRet) { toast('Informe a data de retirada', 'error'); return; }
 
   } else if (next === 'Finalizado') {
+    const finalizadoPor = document.getElementById('us-finalizado-por')?.value?.trim();
+    if (!finalizadoPor) { toast('Informe o nome de quem está finalizando a solicitação.', 'error'); return; }
     p.dataFinalizado = today;
+    setFinalizadoPor(p, finalizadoPor);
 
   } else if (next === 'Cancelado') {
     p.dataCancelado = today;
@@ -2924,7 +2976,7 @@ function openModal(sc) {
     { label:'Aguardando Identificação', icon:'🏷️', status: stepStatus(p.status, 'Aguardando Identificação'), date: p.dataAguardandoId ? formatDate(p.dataAguardandoId) : '', note: '' },
     { label:'Amostragem', icon:'🧪', status: stepStatus(p.status, 'Amostragem'), date: p.dataAmostragem ? formatDate(p.dataAmostragem) : '', note: '' },
     { label:'Aguardando Retirada do Estoque', icon:'📤', status: stepStatus(p.status, 'Aguardando Retirada do Estoque'), date: p.dataAguardandoRet ? formatDate(p.dataAguardandoRet) : '', note: '' },
-    { label:'Finalizado', icon:'✅', status: stepStatus(p.status, 'Finalizado'), date: p.dataFinalizado||'', note: p.recebidoPor ? `Por: ${p.recebidoPor}` : '' },
+    { label:'Finalizado', icon:'✅', status: stepStatus(p.status, 'Finalizado'), date: p.dataFinalizado||'', note: (p.dataFinalizado && getFinalizadoPor(p)) ? `Por: ${getFinalizadoPor(p)}` : '' },
   ];
   const tlHtml = steps.map((s,i) => '<div class="tl-step"><div class="tl-icon-col"><div class="tl-dot '+s.status+'">'+s.icon+'</div>'+(i < steps.length-1 ? '<div class="tl-line"></div>' : '')+'</div><div class="tl-content"><div class="tl-label">'+s.label+'</div>'+(s.date ? '<div class="tl-date">'+s.date+'</div>' : '')+(s.note ? '<div class="tl-note">'+s.note+'</div>' : '')+'</div></div>').join('');
 
@@ -2986,7 +3038,7 @@ function openModal(sc) {
     <div class="timeline">${tlHtml}</div>
 
     ${p.justificativa ? `<div style="margin-top:20px; background:var(--surface2); border-radius:10px; padding:14px"><div style="font-size:11px; color:var(--muted); margin-bottom:6px">JUSTIFICATIVA</div><div style="font-size:13px">${escapeHTML(p.justificativa)}</div></div>` : ''}
-    ${p.obs ? `<div style="margin-top:12px; background:var(--surface2); border-radius:10px; padding:14px"><div style="font-size:11px; color:var(--muted); margin-bottom:6px">OBSERVAÇÕES</div><div style="font-size:13px">${escapeHTML(p.obs)}</div></div>` : ''}
+    ${getObsPublica(p) ? `<div style="margin-top:12px; background:var(--surface2); border-radius:10px; padding:14px"><div style="font-size:11px; color:var(--muted); margin-bottom:6px">OBSERVAÇÕES</div><div style="font-size:13px">${escapeHTML(getObsPublica(p))}</div></div>` : ''}
   `;
 
   document.getElementById('modal-content').innerHTML +=
@@ -3471,7 +3523,8 @@ const STATUS_INFO_CONFIG = [
     { key:'dataAguardandoRet', label:'Data de Retirada / Disponibilização', type:'date' }
   ]},
   { status:'Finalizado', role:'almox', fields:[
-    { key:'dataFinalizado', label:'Data Finalizado', type:'date' }
+    { key:'dataFinalizado', label:'Data Finalizado', type:'date' },
+    { key:'finalizadoPor', label:'Finalizado Por', type:'text' }
   ]},
   { status:'Cancelado', role:'compras', fields:[
     { key:'dataCancelado', label:'Data Cancelamento', type:'date' }
@@ -3494,7 +3547,7 @@ function statusInfoInputId(status, key) {
 
 function renderStatusInfoGroup(p, cfg) {
   const inputs = cfg.fields.map(f => {
-    const value = p[f.key] ?? '';
+    const value = f.key === 'finalizadoPor' ? getFinalizadoPor(p) : (p[f.key] ?? '');
     const step = f.type === 'number' ? ' step="0.01" min="0"' : '';
     return '<div class="form-group">'
       + '<label>' + escapeHTML(f.label) + '</label>'
@@ -3569,7 +3622,8 @@ function applyStatusInfoInputsToPedido(p) {
     cfg.fields.forEach(f => {
       const el = document.getElementById(statusInfoInputId(cfg.status, f.key));
       if (!el) return;
-      if (f.type === 'number') p[f.key] = parseQtd(el.value) || 0;
+      if (f.key === 'finalizadoPor') setFinalizadoPor(p, el.value || '');
+      else if (f.type === 'number') p[f.key] = parseQtd(el.value) || 0;
       else p[f.key] = el.value || '';
     });
   });
@@ -3635,7 +3689,7 @@ function clearFieldsForStatus(p, status) {
   if (status === 'Lançar NF') {
     p.docNFE = ''; p.dataLancarNF = ''; p.dataRecebimento = ''; p.recebidoPor = '';
   }
-  if (status === 'Finalizado') p.dataFinalizado = '';
+  if (status === 'Finalizado') { p.dataFinalizado = ''; clearFinalizadoPor(p); }
   if (status === 'Cancelado') p.dataCancelado = '';
 }
 
