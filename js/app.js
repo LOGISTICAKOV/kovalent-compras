@@ -1997,35 +1997,51 @@ function renderProgramadasTable() {
 // =========================================================
 // PEDIDOS TABLE
 // =========================================================
-function toggleStatusFilter(btn) {
-  const status = btn.dataset.status;
-  const allBtn = document.querySelector('#status-filter-group .status-filter-btn[data-status=""]');
-
-  if (status === '') {
-    // "Todos" clicked — clear all, activate only Todos
-    document.querySelectorAll('#status-filter-group .status-filter-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-  } else {
-    // deactivate "Todos"
-    allBtn.classList.remove('active');
-    btn.classList.toggle('active');
-    // if nothing selected, re-activate Todos
-    const anyActive = [...document.querySelectorAll('#status-filter-group .status-filter-btn.active')].some(b => b.dataset.status !== '');
-    if (!anyActive) allBtn.classList.add('active');
-  }
+// v1.2.19: filtros combináveis, exclusivos da aba Todos os Pedidos.
+function kvLimparFiltrosPedidos() {
+  ['setor','status','prioridade','empresa'].forEach(tipo => {
+    const campo = document.getElementById('pedidos-filter-' + tipo);
+    if (campo) campo.value = '';
+  });
+  const busca = document.getElementById('filterInput');
+  if (busca) busca.value = '';
   renderPedidosTable();
+}
+function kvAtualizarOpcoesPedidos() {
+  const campos = [
+    ['setor', 'departamento', 'Todos os setores'],
+    ['status', 'status', 'Todos os status'],
+    ['prioridade', 'prioridade', 'Todas as prioridades'],
+    ['empresa', 'empresa', 'Todas as empresas']
+  ];
+  campos.forEach(([tipo, propriedade, textoPadrao]) => {
+    const select = document.getElementById('pedidos-filter-' + tipo);
+    if (!select) return;
+    const anterior = select.value;
+    const valores = [...new Set(pedidos.map(p => String(p[propriedade] || '').trim()).filter(Boolean))]
+      .sort((a,b) => a.localeCompare(b, 'pt-BR'));
+    // Mantém a seleção quando a lista é recarregada.
+    if (anterior && !valores.includes(anterior)) valores.push(anterior);
+    select.replaceChildren(new Option(textoPadrao, ''), ...valores.map(v => new Option(v, v)));
+    select.value = anterior;
+  });
 }
 
 function renderPedidosTable() {
-  const q = (document.getElementById('filterInput').value||'').toLowerCase();
-  const activeStatuses = [...document.querySelectorAll('.status-filter-btn.active')]
-    .map(b => b.dataset.status).filter(s => s !== '');
-
-  const statusOrder = ['Solicitado','Cotação','Pedido de Compra','Aguardando Pagamento','A Caminho','Recebimento Parcial','Lançar NF','Conferência','Aguardando Identificação','Amostragem','Aguardando Retirada do Estoque','Finalizado','Cancelado'];
+  kvAtualizarOpcoesPedidos();
+  const q = (document.getElementById('filterInput')?.value || '').trim().toLocaleLowerCase('pt-BR');
+  const filtro = tipo => document.getElementById('pedidos-filter-' + tipo)?.value || '';
+  const setor = filtro('setor'), status = filtro('status');
+  const prioridade = filtro('prioridade'), empresa = filtro('empresa');
+  const statusOrder = ['Solicitado','Cotação','Pedido de Compra','Aguardando Pagamento','A Caminho','Recebimento Parcial','Recebido','Lançar NF','Conferência','Aguardando Identificação','Amostragem','Aguardando Retirada do Estoque','Finalizado','Cancelado'];
 
   const filtered = pedidos.filter(p =>
-    (!q || p.sc.toLowerCase().includes(q) || p.solicitante.toLowerCase().includes(q) || p.itens.some(i=>i.descricao.toLowerCase().includes(q))) &&
-    (activeStatuses.length === 0 || activeStatuses.includes(p.status))
+    (!q || [p.sc,p.solicitante,p.departamento,p.empresa,...(p.itens||[]).map(i=>i.descricao)]
+      .some(v => String(v||'').toLocaleLowerCase('pt-BR').includes(q))) &&
+    (!setor || p.departamento === setor) &&
+    (!status || p.status === status) &&
+    (!prioridade || p.prioridade === prioridade) &&
+    (!empresa || p.empresa === empresa)
   ).sort((a, b) => {
     const ia = statusOrder.indexOf(a.status);
     const ib = statusOrder.indexOf(b.status);

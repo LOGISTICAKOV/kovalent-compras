@@ -6,7 +6,7 @@
 <title>Kovalent · Sistema de Compras Nacionais</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<link rel="stylesheet" href="css/style.css?v=1.2.18">
+<link rel="stylesheet" href="css/style.css?v=1.2.19">
 </head>
 <body class="auth-locked">
 
@@ -319,21 +319,12 @@
     <div class="kv-page-content">
       <div class="kv-toolbar kv-toolbar-stacked">
       <input type="text" id="filterInput" placeholder="🔍  Buscar por SC, item, solicitante, depto..." style="flex:1; min-width:200px" oninput="renderPedidosTable()">
-      <div id="status-filter-group" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
-        <button class="status-filter-btn active" data-status="" onclick="toggleStatusFilter(this)">Todos</button>
-        <button class="status-filter-btn" data-status="Solicitado" onclick="toggleStatusFilter(this)">Solicitado</button>
-        <button class="status-filter-btn" data-status="Cotação" onclick="toggleStatusFilter(this)">Cotação</button>
-        <button class="status-filter-btn" data-status="Pedido de Compra" onclick="toggleStatusFilter(this)">Pedido de Compra</button>
-        <button class="status-filter-btn" data-status="Aguardando Pagamento" onclick="toggleStatusFilter(this)">Aguard. Pagamento</button>
-        <button class="status-filter-btn" data-status="A Caminho" onclick="toggleStatusFilter(this)">A Caminho</button>
-        <button class="status-filter-btn" data-status="Recebimento Parcial" onclick="toggleStatusFilter(this)">Recebido</button>
-        <button class="status-filter-btn" data-status="Lançar NF" onclick="toggleStatusFilter(this)">Lançar NF</button>
-        <button class="status-filter-btn" data-status="Conferência" onclick="toggleStatusFilter(this)">Conferência</button>
-        <button class="status-filter-btn" data-status="Aguardando Identificação" onclick="toggleStatusFilter(this)">Aguard. Identificação</button>
-        <button class="status-filter-btn" data-status="Amostragem" onclick="toggleStatusFilter(this)">Amostragem</button>
-        <button class="status-filter-btn" data-status="Aguardando Retirada do Estoque" onclick="toggleStatusFilter(this)">Aguard. Retirada</button>
-        <button class="status-filter-btn" data-status="Finalizado" onclick="toggleStatusFilter(this)">Finalizado</button>
-        <button class="status-filter-btn" data-status="Cancelado" onclick="toggleStatusFilter(this)">Cancelado</button>
+      <div class="kv-pedidos-filters" id="kv-pedidos-filters">
+        <label>Setor<select id="pedidos-filter-setor" onchange="renderPedidosTable()"><option value="">Todos os setores</option></select></label>
+        <label>Status<select id="pedidos-filter-status" onchange="renderPedidosTable()"><option value="">Todos os status</option></select></label>
+        <label>Prioridade<select id="pedidos-filter-prioridade" onchange="renderPedidosTable()"><option value="">Todas as prioridades</option></select></label>
+        <label>Empresa<select id="pedidos-filter-empresa" onchange="renderPedidosTable()"><option value="">Todas as empresas</option></select></label>
+        <button type="button" class="kv-clear-pedidos" onclick="kvLimparFiltrosPedidos()">Limpar filtros</button>
       </div>
       </div>
 
@@ -644,6 +635,6 @@
   </div>
 </div>
 
-<script src="js/app.js?v=1.2.18"></script>
+<script src="js/app.js?v=1.2.19"></script>
 </body>
 </html>

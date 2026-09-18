@@ -725,3 +725,12 @@ body:not(.auth-locked) #tab-programadas>.page-title,body:not(.auth-locked) #tab-
 
 /* v1.2.18 — orientação do prazo mínimo */
 .kv-prazo-minimo{display:block;margin-top:5px;color:#57728b;font-size:11px;line-height:1.35}
+
+/* v1.2.19 — filtros em dropdown na aba Todos os Pedidos */
+#tab-pedidos .kv-pedidos-filters{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr)) auto;gap:12px;align-items:end;width:100%}
+#tab-pedidos .kv-pedidos-filters label{display:flex;flex-direction:column;gap:6px;font-size:11px;font-weight:700;color:#48637b;min-width:0}
+#tab-pedidos .kv-pedidos-filters select{width:100%;min-width:0;max-width:100%;border:1px solid #cfdeed;border-radius:9px;background:#fff;color:#173955;padding:9px 12px;min-height:40px}
+#tab-pedidos .kv-clear-pedidos{min-height:40px;padding:0 15px;border:1px solid #c9dced;border-radius:9px;background:#f1f7fd;color:#145481;font-weight:700;cursor:pointer;white-space:nowrap}
+#tab-pedidos .kv-clear-pedidos:hover{background:#e0f1fc}
+@media(max-width:1100px){#tab-pedidos .kv-pedidos-filters{grid-template-columns:repeat(2,minmax(0,1fr))}#tab-pedidos .kv-clear-pedidos{grid-column:1/-1}}
+@media(max-width:520px){#tab-pedidos .kv-pedidos-filters{grid-template-columns:1fr}}
