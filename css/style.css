@@ -757,3 +757,11 @@ body:not(.auth-locked) #tab-programadas>.page-title,body:not(.auth-locked) #tab-
 .kv-kpi-period-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .kv-kpi-period-controls label{font-size:12px;font-weight:700;color:var(--muted)}
 .kv-kpi-period-controls select,.kv-kpi-period-controls input{max-width:190px;padding:9px 12px;border:1px solid var(--border,#dbe4ed);border-radius:10px;background:var(--card,#fff);color:var(--text,#18334d);font:inherit;font-size:13px}
+
+/* v1.2.22: cabeçalho do histórico de programadas sem largura fixa no título */
+#tab-programadas .kv-historico-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;min-width:0;cursor:pointer;margin-bottom:0!important;flex-wrap:wrap}
+#tab-programadas .kv-historico-heading .kv-historico-label{display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 260px;line-height:1.4;overflow-wrap:anywhere}
+#tab-programadas .kv-historico-heading .kv-historico-folder{display:inline-flex;align-items:center;justify-content:center;flex:0 0 34px;width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#e5f5ff,#d9f6fb);font-size:18px}
+#tab-programadas .kv-historico-heading .kv-historico-toggle{flex:0 0 auto;white-space:nowrap;font-size:13px!important;color:var(--muted);margin-left:auto}
+#tab-programadas #historico-finalizadas{margin-top:18px}
+#tab-programadas .kv-historico-heading:focus-visible{outline:2px solid #078dde;outline-offset:4px;border-radius:6px}
