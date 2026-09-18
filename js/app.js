@@ -5066,6 +5066,13 @@ submitSolicitacao = async function() {
   if (!empresa || !solicitante || !depto || !prioridade || !necessidade || !justificativa) {
     toast('Preencha todos os campos obrigatórios (*)', 'error'); return;
   }
+  // Atributo min do navegador não substitui validação no envio (ex.: valor inserido manualmente).
+  kvAtualizarPrazoNecessidade();
+  if (necessidade < kvDataMinimaNecessidade()) {
+    toast('A data da necessidade deve ser de pelo menos 4 dias corridos a partir de hoje.', 'error');
+    document.getElementById('f-necessidade').focus();
+    return;
+  }
   if (items.length === 0) { toast('Adicione pelo menos um item à solicitação', 'error'); return; }
 
   const btn = document.querySelector('[onclick="submitSolicitacao()"]');
@@ -5112,3 +5119,31 @@ dbLoad = async function() {
   if (scEl) scEl.value = await kvGetNextSC();
   return ok;
 };
+
+// v1.2.18 — Prazo mínimo de 4 dias corridos para novas solicitações.
+// Datas são montadas no fuso local, evitando o deslocamento de um dia causado por UTC.
+function kvDataMinimaNecessidade() {
+  const data = new Date();
+  data.setHours(12, 0, 0, 0);
+  data.setDate(data.getDate() + 4);
+  return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}-${String(data.getDate()).padStart(2, '0')}`;
+}
+function kvAtualizarPrazoNecessidade() {
+  const campo = document.getElementById('f-necessidade');
+  if (!campo) return;
+  const minimo = kvDataMinimaNecessidade();
+  campo.min = minimo;
+  const aviso = document.getElementById('kv-prazo-minimo');
+  if (aviso) {
+    const [ano, mes, dia] = minimo.split('-');
+    aviso.textContent = `Data mínima: ${dia}/${mes}/${ano} (4 dias corridos a partir de hoje).`;
+  }
+}
+document.addEventListener('DOMContentLoaded', () => {
+  kvAtualizarPrazoNecessidade();
+  const campo = document.getElementById('f-necessidade');
+  if (campo) {
+    campo.addEventListener('focus', kvAtualizarPrazoNecessidade);
+    campo.addEventListener('change', kvAtualizarPrazoNecessidade);
+  }
+});

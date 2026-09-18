@@ -6,7 +6,7 @@
 <title>Kovalent · Sistema de Compras Nacionais</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<link rel="stylesheet" href="css/style.css?v=1.2.17">
+<link rel="stylesheet" href="css/style.css?v=1.2.18">
 </head>
 <body class="auth-locked">
 
@@ -154,7 +154,7 @@
           <div class="card-title"><span>🛒</span><div>Informações da Compra<small>Detalhes da aquisição.</small></div></div>
           <div class="form-grid kv-form-compact">
             <div class="form-group"><label>Tipo de Compra</label><select id="f-tipo"><option value="">Selecione...</option><option>Uso/Consumo</option><option>Revenda</option><option>Licitações</option><option>Fabricação</option><option>Industrialização</option></select></div>
-            <div class="form-group"><label>Data Necessidade *</label><input type="date" id="f-necessidade"></div>
+            <div class="form-group"><label>Data Necessidade *</label><input type="date" id="f-necessidade" aria-describedby="kv-prazo-minimo"><small id="kv-prazo-minimo" class="kv-prazo-minimo">Prazo mínimo: 4 dias corridos a partir de hoje.</small></div>
             <div class="form-group"><label>Fornecedor / Marca Sugerida</label><input type="text" id="f-fornecedor" placeholder="Opcional"></div>
             <div class="form-group"><label>Link do Produto</label><input type="url" id="f-link" placeholder="https://..."></div>
             <div class="form-group"><label>Valor de Referência (R$) <span class="kv-optional">— opcional</span></label><input type="number" id="f-valref" placeholder="R$ 0,00" step="0.01" min="0"></div>
@@ -644,6 +644,6 @@
   </div>
 </div>
 
-<script src="js/app.js?v=1.2.17"></script>
+<script src="js/app.js?v=1.2.18"></script>
 </body>
 </html>

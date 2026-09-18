@@ -722,3 +722,6 @@ body:not(.auth-locked) #tab-programadas>.page-title,body:not(.auth-locked) #tab-
 
 /* v1.2.16: prioridade simplificada para novas solicitações */
 .priority-não.urgente { color: #159b78; font-weight: 600; }
+
+/* v1.2.18 — orientação do prazo mínimo */
+.kv-prazo-minimo{display:block;margin-top:5px;color:#57728b;font-size:11px;line-height:1.35}
