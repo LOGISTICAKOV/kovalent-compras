@@ -719,3 +719,6 @@ body:not(.auth-locked) #tab-programadas>.page-title,body:not(.auth-locked) #tab-
 }
 #saving-item-editor .saving-scroll-control span{font-size:11px;color:#52718a;white-space:nowrap}
 #saving-item-editor .saving-scroll-range{width:100%;min-width:0;cursor:ew-resize;accent-color:#078dde}
+
+/* v1.2.16: prioridade simplificada para novas solicitações */
+.priority-não.urgente { color: #159b78; font-weight: 600; }

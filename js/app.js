@@ -1220,8 +1220,8 @@ function renderDashboard() {
     return `<div class="bar-row"><span style="font-size:13px">${st}</span><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${col}"></div></div><span class="bar-count">${count}</span></div>`;
   }).join('');
 
-  const priorities = ['Urgente','Alta','Média','Baixa'];
-  const priColors = {'Urgente':'#ec4899','Alta':'#ef4444','Média':'#f59e0b','Baixa':'#6b7d99'};
+  const priorities = ['Urgente','Não Urgente','Alta','Média','Baixa'];
+  const priColors = {'Urgente':'#ec4899','Não Urgente':'#159b78','Alta':'#ef4444','Média':'#f59e0b','Baixa':'#6b7d99'};
   const priCounts = {};
   pedidos.forEach(p => { priCounts[p.prioridade] = (priCounts[p.prioridade]||0)+1; });
   const maxPri = Math.max(1, ...Object.values(priCounts));
