@@ -1132,6 +1132,31 @@ function saveDocs(sc) {
   dbUpdate(p);
 }
 
+// KPI Compras: visão anual móvel ou mês selecionado, sem alterar dados persistidos.
+window._kpiPeriod = '12m';
+window._kpiMonth = new Date().getFullYear() + '-' + String(new Date().getMonth()+1).padStart(2,'0');
+function getKPIPedidos() {
+  const now = new Date();
+  const first = new Date(now.getFullYear(), now.getMonth()-11, 1);
+  const start = first.getFullYear() + '-' + String(first.getMonth()+1).padStart(2,'0');
+  const current = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+  return pedidos.filter(p => {
+    const date = String(p.data || '').slice(0,7);
+    return /^\d{4}-\d{2}$/.test(date) && (window._kpiPeriod === 'mensal'
+      ? date === window._kpiMonth : date >= start && date <= current);
+  });
+}
+function setKPIPeriod(mode) {
+  window._kpiPeriod = mode === 'mensal' ? 'mensal' : '12m';
+  const picker = document.getElementById('kpi-period-month');
+  if (picker) { picker.style.display = window._kpiPeriod === 'mensal' ? '' : 'none'; picker.value = window._kpiMonth; }
+  renderDashboard();
+}
+function setKPIMonth(month) {
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) return;
+  window._kpiMonth = month;
+  renderDashboard();
+}
 // =========================================================
 // DASHBOARD / KPI
 // =========================================================
@@ -1145,33 +1170,34 @@ function fmtPct(v) {
 }
 
 function renderDashboard() {
-  const total = pedidos.length;
+  const pedidosKPI = getKPIPedidos();
+  const total = pedidosKPI.length;
   const hoje = new Date();
 
   const byStatus = {};
-  pedidos.forEach(p => { byStatus[p.status] = (byStatus[p.status]||0)+1; });
+  pedidosKPI.forEach(p => { byStatus[p.status] = (byStatus[p.status]||0)+1; });
 
   const recebidos = byStatus['Finalizado']||0;
   const emAberto = total - recebidos - (byStatus['Cancelado']||0);
-  const atrasados = pedidos.filter(p => p.status !== 'Recebido' && p.status !== 'Cancelado' && p.necessidade && new Date(p.necessidade) < hoje).length;
+  const atrasados = pedidosKPI.filter(p => p.status !== 'Recebido' && p.status !== 'Cancelado' && p.necessidade && new Date(p.necessidade) < hoje).length;
 
   // lead time médio
-  const leadTimes = pedidos
+  const leadTimes = pedidosKPI
     .filter(p => p.dataRecebimento && p.data && p.origem !== 'programada')
     .map(p => (new Date(p.dataRecebimento) - new Date(p.data)) / 86400000);
   const avgLead = leadTimes.length ? (leadTimes.reduce((a,b)=>a+b,0)/leadTimes.length).toFixed(1) : '—';
 
   // tempo médio no status "Lançar NF" (de dataLancarNF até dataConferencia ou hoje se ainda lá)
-  const nfTimes = pedidos.filter(p => p.dataLancarNF).map(p => {
+  const nfTimes = pedidosKPI.filter(p => p.dataLancarNF).map(p => {
     const entrada = new Date(p.dataLancarNF);
     const saida   = p.dataConferencia ? new Date(p.dataConferencia) : new Date();
     return Math.max(0, (saida - entrada) / 86400000);
   });
   const avgNF = nfTimes.length ? (nfTimes.reduce((a,b)=>a+b,0)/nfTimes.length).toFixed(1) : '—';
-  const pendentesNF = pedidos.filter(p => p.status === 'Lançar NF').length;
+  const pendentesNF = pedidosKPI.filter(p => p.status === 'Lançar NF').length;
 
-  // Taxa de pedidos entregues no prazo (necessidade >= dataRecebimento)
-  const pedidosConcluidos = pedidos.filter(p => p.dataRecebimento && p.necessidade && p.origem !== 'programada');
+  // Taxa de pedidosKPI entregues no prazo (necessidade >= dataRecebimento)
+  const pedidosConcluidos = pedidosKPI.filter(p => p.dataRecebimento && p.necessidade && p.origem !== 'programada');
   const pedidosNoPrazo    = pedidosConcluidos.filter(p => new Date(p.dataRecebimento) <= new Date(p.necessidade));
   const taxaNoPrazo       = pedidosConcluidos.length > 0
     ? Math.round(pedidosNoPrazo.length / pedidosConcluidos.length * 100)
@@ -1179,12 +1205,12 @@ function renderDashboard() {
   const taxaColor = taxaNoPrazo === null ? 'var(--muted)' : taxaNoPrazo >= 90 ? '#059669' : taxaNoPrazo >= 70 ? '#d97706' : '#dc2626';
 
   // financeiro
-  const totalPago = pedidos.reduce((s,p) => s + (p.valorPago||0), 0);
-  const totalCotacao = pedidos.reduce((s,p) => s + (p.valorCotacao||0), 0);
-  const totalSaving = pedidos.reduce((s,p) => s + (p.saving||0), 0);
+  const totalPago = pedidosKPI.reduce((s,p) => s + (p.valorPago||0), 0);
+  const totalCotacao = pedidosKPI.reduce((s,p) => s + (p.valorCotacao||0), 0);
+  const totalSaving = pedidosKPI.reduce((s,p) => s + (p.saving||0), 0);
   const savingPct = totalCotacao > 0 ? (totalSaving / totalCotacao * 100) : 0;
-  const totalRef = pedidos.reduce((s,p) => s + (p.valorRef||0), 0);
-  const savingRef = pedidos.reduce((s,p) => s + (p.savingRef||0), 0);
+  const totalRef = pedidosKPI.reduce((s,p) => s + (p.valorRef||0), 0);
+  const savingRef = pedidosKPI.reduce((s,p) => s + (p.savingRef||0), 0);
   const savingRefPct = totalRef > 0 ? (savingRef / totalRef * 100) : 0;
 
   document.getElementById('kpi-grid').innerHTML = `
@@ -1198,7 +1224,7 @@ function renderDashboard() {
       <div class="kv-exec-icon">⏱</div><div><div class="kpi-value">${avgLead === '—' ? '—' : avgLead + ' dias'}</div><div class="kpi-label">Lead Time médio</div><div class="kpi-sub">da solicitação à entrega</div></div>
     </div>
     <div class="kpi-card kv-exec-card kv-exec-sla" style="cursor:${taxaNoPrazo!==null?'pointer':'default'}" onclick="${taxaNoPrazo!==null?'openTaxaPrazoModal()':''}">
-      <div class="kv-exec-icon">✅</div><div><div class="kpi-value" style="color:${taxaColor}">${taxaNoPrazo !== null ? taxaNoPrazo + '%' : '—'}</div><div class="kpi-label">Taxa de entregas no prazo</div><div class="kpi-sub">${pedidosConcluidos.length} pedidos analisados</div></div>
+      <div class="kv-exec-icon">✅</div><div><div class="kpi-value" style="color:${taxaColor}">${taxaNoPrazo !== null ? taxaNoPrazo + '%' : '—'}</div><div class="kpi-label">Taxa de entregas no prazo</div><div class="kpi-sub">${pedidosConcluidos.length} pedidosKPI analisados</div></div>
     </div>
   `;
 
@@ -1206,9 +1232,9 @@ function renderDashboard() {
   if (finGrid) {
     finGrid.innerHTML = `
       <div class="kpi-card kv-mini-card"><div class="kv-mini-icon">💳</div><div><div class="kpi-label">Total Comprado</div><div class="kpi-value">${fmtBRL(totalPago)}</div><div class="kpi-sub">soma dos valores pagos</div></div></div>
-      <div class="kpi-card kv-mini-card"><div class="kv-mini-icon">📌</div><div><div class="kpi-label">Em Aberto</div><div class="kpi-value">${emAberto}</div><div class="kpi-sub">pedidos em andamento</div></div></div>
+      <div class="kpi-card kv-mini-card"><div class="kv-mini-icon">📌</div><div><div class="kpi-label">Em Aberto</div><div class="kpi-value">${emAberto}</div><div class="kpi-sub">pedidosKPI em andamento</div></div></div>
       <div class="kpi-card kv-mini-card kv-mini-danger"><div class="kv-mini-icon">⚠️</div><div><div class="kpi-label">Atrasados</div><div class="kpi-value">${atrasados}</div><div class="kpi-sub">acima da data necessidade</div></div></div>
-      <div class="kpi-card kv-mini-card kv-mini-warn" onclick="openNFDetalhe()" title="Clique para ver pedidos pendentes"><div class="kv-mini-icon">🧾</div><div><div class="kpi-label">Tempo Médio — Lançar NF</div><div class="kpi-value">${avgNF === '—' ? '—' : avgNF + ' dias'}</div><div class="kpi-sub">${pendentesNF} pendente${pendentesNF===1?'':'s'}</div></div></div>
+      <div class="kpi-card kv-mini-card kv-mini-warn" onclick="openNFDetalhe()" title="Clique para ver pedidosKPI pendentes"><div class="kv-mini-icon">🧾</div><div><div class="kpi-label">Tempo Médio — Lançar NF</div><div class="kpi-value">${avgNF === '—' ? '—' : avgNF + ' dias'}</div><div class="kpi-sub">${pendentesNF} pendente${pendentesNF===1?'':'s'}</div></div></div>
       <div class="kpi-card kv-mini-card"><div class="kv-mini-icon">🎯</div><div><div class="kpi-label">Saving Ref. → Pago</div><div class="kpi-value">${savingRef > 0 ? fmtBRL(savingRef) : '—'}</div><div class="kpi-sub">${savingRef > 0 ? fmtPct(savingRefPct)+' sobre referência' : 'Aguardando dados'}</div></div></div>
     `;
   }
@@ -1223,7 +1249,7 @@ function renderDashboard() {
   const priorities = ['Urgente','Não Urgente','Alta','Média','Baixa'];
   const priColors = {'Urgente':'#ec4899','Não Urgente':'#159b78','Alta':'#ef4444','Média':'#f59e0b','Baixa':'#6b7d99'};
   const priCounts = {};
-  pedidos.forEach(p => { priCounts[p.prioridade] = (priCounts[p.prioridade]||0)+1; });
+  pedidosKPI.forEach(p => { priCounts[p.prioridade] = (priCounts[p.prioridade]||0)+1; });
   const maxPri = Math.max(1, ...Object.values(priCounts));
   document.getElementById('sla-bars').innerHTML = priorities.map(pr => {
     const count = priCounts[pr]||0;
@@ -1233,7 +1259,7 @@ function renderDashboard() {
 
   // saving por departamento
   const savingDepto = {};
-  pedidos.forEach(p => {
+  pedidosKPI.forEach(p => {
     if (!p.departamento) return;
     if (!savingDepto[p.departamento]) savingDepto[p.departamento] = {pago:0, cotacao:0, saving:0};
     savingDepto[p.departamento].pago += p.valorPago||0;
@@ -1246,7 +1272,7 @@ function renderDashboard() {
       .filter(([,v]) => v.cotacao > 0)
       .sort((a,b) => b[1].saving - a[1].saving);
     if (rows.length === 0) {
-      savingDeptoEl.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:12px 0">Nenhum dado financeiro ainda. Atualize pedidos para a etapa "Aguardando Pagamento" informando os valores.</div>';
+      savingDeptoEl.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:12px 0">Nenhum dado financeiro ainda. Atualize pedidosKPI para a etapa "Aguardando Pagamento" informando os valores.</div>';
     } else {
       const maxS = Math.max(1, ...rows.map(([,v])=>v.cotacao));
       savingDeptoEl.innerHTML = rows.map(([depto, v]) => {
@@ -1277,7 +1303,7 @@ function renderDashboard() {
   // render monthly chart
   setTimeout(renderComprasChart, 50);
 
-  const late = pedidos.filter(p => p.status !== 'Finalizado' && p.status !== 'Cancelado' && p.status !== 'Conferência' && p.status !== 'Aguardando Identificação' && p.status !== 'Amostragem' && p.status !== 'Aguardando Retirada do Estoque' && p.necessidade && new Date(p.necessidade) < hoje);
+  const late = pedidosKPI.filter(p => p.status !== 'Finalizado' && p.status !== 'Cancelado' && p.status !== 'Conferência' && p.status !== 'Aguardando Identificação' && p.status !== 'Amostragem' && p.status !== 'Aguardando Retirada do Estoque' && p.necessidade && new Date(p.necessidade) < hoje);
   if (late.length === 0) {
     document.getElementById('late-table').innerHTML = '<div class="empty-state" style="padding:30px"><div class="icon">✅</div><h3>Sem atrasos!</h3></div>';
   } else {
@@ -1318,15 +1344,19 @@ function renderComprasChart() {
   // Build last 12 months array
   const now = new Date();
   const months = [];
-  for (let i = 11; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+  const isMonthly = window._kpiPeriod === 'mensal';
+  const selectedMonth = isMonthly ? new Date(window._kpiMonth + '-01T12:00:00') : now;
+  for (let i = isMonthly ? 0 : 11; i >= 0; i--) {
+    const d = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() - i, 1);
     months.push({
       key: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`,
       label: d.toLocaleDateString('pt-BR', {month:'short', year:'2-digit'}).replace('. ','/')    });
   }
 
   // Filter pedidos with data
-  const pedidosComData = pedidos.filter(p => p.data);
+  const pedidosComData = getKPIPedidos();
+  const subtitle = document.getElementById('kpi-chart-subtitle');
+  if (subtitle) subtitle.textContent = isMonthly ? 'Volume de pedidos no mês selecionado.' : 'Evolução do volume de pedidos nos últimos 12 meses.';
 
   if (pedidosComData.length === 0) {
     canvas.style.display = 'none';
@@ -1405,7 +1435,7 @@ function renderComprasChart() {
   const chartW = W - PAD.left - PAD.right;
   const chartH = H - PAD.top - PAD.bottom;
   const barGroupW = chartW / months.length;
-  const barW = Math.max(4, Math.min(24, (barGroupW - 8) / datasets.length));
+  const barW = Math.max(4, Math.min(isMonthly ? 70 : 24, (barGroupW - 8) / Math.max(1,datasets.length)));
   const groupOffset = (barGroupW - barW * datasets.length) / 2;
 
   // Grid lines

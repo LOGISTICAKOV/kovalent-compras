@@ -6,7 +6,7 @@
 <title>Kovalent · Sistema de Compras Nacionais</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<link rel="stylesheet" href="css/style.css?v=1.2.20">
+<link rel="stylesheet" href="css/style.css?v=1.2.21">
 </head>
 <body class="auth-locked">
 
@@ -219,7 +219,14 @@
           <h2>Performance de Compras</h2>
           <p>Acompanhe volume, saving, prazo e eficiência operacional em uma única visão.</p>
         </div>
-        <div class="kv-kpi-period-chip">📅 Últimos 12 meses</div>
+        <div class="kv-kpi-period-controls" aria-label="Período dos indicadores de compras">
+          <label for="kpi-period-mode">Período</label>
+          <select id="kpi-period-mode" onchange="setKPIPeriod(this.value)">
+            <option value="12m">Últimos 12 meses</option>
+            <option value="mensal">Mensal</option>
+          </select>
+          <input id="kpi-period-month" type="month" aria-label="Escolha o mês dos indicadores" onchange="setKPIMonth(this.value)" style="display:none">
+        </div>
       </div>
 
       <div class="kpi-grid kv-kpi-primary" id="kpi-grid"></div>
@@ -228,7 +235,7 @@
       <div class="kv-kpi-dashboard-grid kv-kpi-dashboard-main">
         <div class="card kv-kpi-chart-card">
           <div class="card-title kv-kpi-card-head">
-            <div><span>📅</span><div>Compras por Mês<small>Evolução do volume de pedidos nos últimos 12 meses.</small></div></div>
+            <div><span>📅</span><div>Compras por Mês<small id="kpi-chart-subtitle">Evolução do volume de pedidos nos últimos 12 meses.</small></div></div>
             <div style="display:flex;gap:6px" id="chart-filter-btns">
               <button class="chart-filter-btn active" onclick="setChartView('total',this)">Total</button>
               <button class="chart-filter-btn" onclick="setChartView('empresa',this)">Por Empresa</button>
@@ -635,6 +642,6 @@
   </div>
 </div>
 
-<script src="js/app.js?v=1.2.20"></script>
+<script src="js/app.js?v=1.2.21"></script>
 </body>
 </html>

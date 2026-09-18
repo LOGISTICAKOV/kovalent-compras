@@ -752,3 +752,8 @@ body:not(.auth-locked) #tab-programadas>.page-title,body:not(.auth-locked) #tab-
 #tab-pedidos .kv-multi-option input{width:16px;height:16px;min-height:16px;margin:0;flex-shrink:0;accent-color:#078dde}
 #tab-pedidos .kv-multi-empty{display:block;padding:10px;font-size:12px;color:#6c8295}
 #tab-pedidos .kv-toolbar,#tab-pedidos .kv-pedidos-filters{overflow:visible}
+
+/* v1.2.21: seletor de período KPI Compras */
+.kv-kpi-period-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.kv-kpi-period-controls label{font-size:12px;font-weight:700;color:var(--muted)}
+.kv-kpi-period-controls select,.kv-kpi-period-controls input{max-width:190px;padding:9px 12px;border:1px solid var(--border,#dbe4ed);border-radius:10px;background:var(--card,#fff);color:var(--text,#18334d);font:inherit;font-size:13px}
