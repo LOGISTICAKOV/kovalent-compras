@@ -2043,7 +2043,7 @@ function renderPedidosTable() {
     const atrasados = pedidos.filter(p=>!['Finalizado','Cancelado'].includes(p.status) && p.necessidade && new Date(p.necessidade) < hoje).length;
     pedidosKpi.innerHTML = `
       <div class="kpi-card kv-kpi-blue"><div class="kpi-label">📋 Pedidos no período</div><div class="kpi-value">${totalPedidos}</div><div class="kpi-sub">pedidos registrados</div></div>
-      <div class="kpi-card kv-kpi-mint"><div class="kpi-label">💰 Valor total</div><div class="kpi-value">${fmtBRL(valorTotal)}</div><div class="kpi-sub">valor efetivamente pago</div></div>
+      <div class="kpi-card kv-kpi-mint"><div class="kpi-label">💰 Valor Comprado</div><div class="kpi-value">${fmtBRL(valorTotal)}</div><div class="kpi-sub">soma dos valores comprados</div></div>
       <div class="kpi-card kv-kpi-green"><div class="kpi-label">✅ Pedidos entregues</div><div class="kpi-value">${entregues}</div><div class="kpi-sub">finalizados</div></div>
       <div class="kpi-card kv-kpi-blue"><div class="kpi-label">🕒 Em andamento</div><div class="kpi-value">${andamento}</div><div class="kpi-sub">em processamento</div></div>
       <div class="kpi-card kv-kpi-red"><div class="kpi-label">🔴 Atrasados</div><div class="kpi-value">${atrasados}</div><div class="kpi-sub">acima da necessidade</div></div>`;
