@@ -1997,51 +1997,80 @@ function renderProgramadasTable() {
 // =========================================================
 // PEDIDOS TABLE
 // =========================================================
-// v1.2.19: filtros combináveis, exclusivos da aba Todos os Pedidos.
+// v1.2.20: seleção múltipla dentro de cada filtro (OU), combinada entre filtros (E).
+const kvPedidosFiltros = ['setor', 'status', 'prioridade', 'empresa'];
+function kvSelecoesPedidos(tipo) {
+  const painel = document.querySelector('#pedidos-filter-' + tipo + ' .kv-multi-options');
+  return painel ? [...painel.querySelectorAll('input[type="checkbox"]:checked')].map(c => c.value) : [];
+}
 function kvLimparFiltrosPedidos() {
-  ['setor','status','prioridade','empresa'].forEach(tipo => {
-    const campo = document.getElementById('pedidos-filter-' + tipo);
-    if (campo) campo.value = '';
+  kvPedidosFiltros.forEach(tipo => {
+    const detalhes = document.getElementById('pedidos-filter-' + tipo);
+    if (!detalhes) return;
+    detalhes.querySelectorAll('input[type="checkbox"]').forEach(c => { c.checked = false; });
+    detalhes.open = false;
+    kvAtualizarLegendaFiltro(tipo);
   });
   const busca = document.getElementById('filterInput');
   if (busca) busca.value = '';
   renderPedidosTable();
 }
+function kvAtualizarLegendaFiltro(tipo) {
+  const detalhes = document.getElementById('pedidos-filter-' + tipo);
+  if (!detalhes) return;
+  const valores = kvSelecoesPedidos(tipo);
+  const legenda = detalhes.querySelector('.kv-multi-caption');
+  if (legenda) legenda.textContent = valores.length === 0 ? 'Todos' : valores.length === 1 ? valores[0] : valores.length + ' selecionados';
+  detalhes.classList.toggle('kv-multi-active', valores.length > 0);
+}
 function kvAtualizarOpcoesPedidos() {
   const campos = [
-    ['setor', 'departamento', 'Todos os setores'],
-    ['status', 'status', 'Todos os status'],
-    ['prioridade', 'prioridade', 'Todas as prioridades'],
-    ['empresa', 'empresa', 'Todas as empresas']
+    ['setor', 'departamento'],
+    ['status', 'status'],
+    ['prioridade', 'prioridade'],
+    ['empresa', 'empresa']
   ];
-  campos.forEach(([tipo, propriedade, textoPadrao]) => {
-    const select = document.getElementById('pedidos-filter-' + tipo);
-    if (!select) return;
-    const anterior = select.value;
+  campos.forEach(([tipo, propriedade]) => {
+    const detalhes = document.getElementById('pedidos-filter-' + tipo);
+    const painel = detalhes?.querySelector('.kv-multi-options');
+    if (!painel) return;
+    const anteriores = new Set(kvSelecoesPedidos(tipo));
     const valores = [...new Set(pedidos.map(p => String(p[propriedade] || '').trim()).filter(Boolean))]
       .sort((a,b) => a.localeCompare(b, 'pt-BR'));
-    // Mantém a seleção quando a lista é recarregada.
-    if (anterior && !valores.includes(anterior)) valores.push(anterior);
-    select.replaceChildren(new Option(textoPadrao, ''), ...valores.map(v => new Option(v, v)));
-    select.value = anterior;
+    // Preserva filtros selecionados durante sincronizações e atualizações de pedidos.
+    anteriores.forEach(valor => { if (!valores.includes(valor)) valores.push(valor); });
+    const atuais = [...painel.querySelectorAll('input[type="checkbox"]')].map(c => c.value);
+    if (atuais.length !== valores.length || atuais.some((v,i) => v !== valores[i])) {
+      painel.replaceChildren();
+      valores.forEach(valor => {
+        const label = document.createElement('label');
+        label.className = 'kv-multi-option';
+        const check = document.createElement('input');
+        check.type = 'checkbox'; check.value = valor; check.checked = anteriores.has(valor);
+        check.addEventListener('change', () => { kvAtualizarLegendaFiltro(tipo); renderPedidosTable(); });
+        const texto = document.createElement('span'); texto.textContent = valor;
+        label.append(check, texto); painel.append(label);
+      });
+      if (!valores.length) { const vazio = document.createElement('span'); vazio.className = 'kv-multi-empty'; vazio.textContent = 'Nenhuma opção disponível'; painel.append(vazio); }
+    }
+    kvAtualizarLegendaFiltro(tipo);
   });
 }
 
 function renderPedidosTable() {
   kvAtualizarOpcoesPedidos();
   const q = (document.getElementById('filterInput')?.value || '').trim().toLocaleLowerCase('pt-BR');
-  const filtro = tipo => document.getElementById('pedidos-filter-' + tipo)?.value || '';
-  const setor = filtro('setor'), status = filtro('status');
-  const prioridade = filtro('prioridade'), empresa = filtro('empresa');
+  const setor = kvSelecoesPedidos('setor'), status = kvSelecoesPedidos('status');
+  const prioridade = kvSelecoesPedidos('prioridade'), empresa = kvSelecoesPedidos('empresa');
   const statusOrder = ['Solicitado','Cotação','Pedido de Compra','Aguardando Pagamento','A Caminho','Recebimento Parcial','Recebido','Lançar NF','Conferência','Aguardando Identificação','Amostragem','Aguardando Retirada do Estoque','Finalizado','Cancelado'];
 
   const filtered = pedidos.filter(p =>
     (!q || [p.sc,p.solicitante,p.departamento,p.empresa,...(p.itens||[]).map(i=>i.descricao)]
       .some(v => String(v||'').toLocaleLowerCase('pt-BR').includes(q))) &&
-    (!setor || p.departamento === setor) &&
-    (!status || p.status === status) &&
-    (!prioridade || p.prioridade === prioridade) &&
-    (!empresa || p.empresa === empresa)
+    (!setor.length || setor.includes(p.departamento)) &&
+    (!status.length || status.includes(p.status)) &&
+    (!prioridade.length || prioridade.includes(p.prioridade)) &&
+    (!empresa.length || empresa.includes(p.empresa))
   ).sort((a, b) => {
     const ia = statusOrder.indexOf(a.status);
     const ib = statusOrder.indexOf(b.status);

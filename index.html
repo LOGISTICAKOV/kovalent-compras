@@ -6,7 +6,7 @@
 <title>Kovalent · Sistema de Compras Nacionais</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<link rel="stylesheet" href="css/style.css?v=1.2.19">
+<link rel="stylesheet" href="css/style.css?v=1.2.20">
 </head>
 <body class="auth-locked">
 
@@ -320,10 +320,10 @@
       <div class="kv-toolbar kv-toolbar-stacked">
       <input type="text" id="filterInput" placeholder="🔍  Buscar por SC, item, solicitante, depto..." style="flex:1; min-width:200px" oninput="renderPedidosTable()">
       <div class="kv-pedidos-filters" id="kv-pedidos-filters">
-        <label>Setor<select id="pedidos-filter-setor" onchange="renderPedidosTable()"><option value="">Todos os setores</option></select></label>
-        <label>Status<select id="pedidos-filter-status" onchange="renderPedidosTable()"><option value="">Todos os status</option></select></label>
-        <label>Prioridade<select id="pedidos-filter-prioridade" onchange="renderPedidosTable()"><option value="">Todas as prioridades</option></select></label>
-        <label>Empresa<select id="pedidos-filter-empresa" onchange="renderPedidosTable()"><option value="">Todas as empresas</option></select></label>
+        <div class="kv-multi-field"><span class="kv-multi-label">Setor</span><details class="kv-multi" id="pedidos-filter-setor"><summary aria-label="Filtrar por setor"><span class="kv-multi-caption">Todos</span><span class="kv-multi-chevron">▾</span></summary><div class="kv-multi-options" role="group" aria-label="Opções de setor"></div></details></div>
+        <div class="kv-multi-field"><span class="kv-multi-label">Status</span><details class="kv-multi" id="pedidos-filter-status"><summary aria-label="Filtrar por status"><span class="kv-multi-caption">Todos</span><span class="kv-multi-chevron">▾</span></summary><div class="kv-multi-options" role="group" aria-label="Opções de status"></div></details></div>
+        <div class="kv-multi-field"><span class="kv-multi-label">Prioridade</span><details class="kv-multi" id="pedidos-filter-prioridade"><summary aria-label="Filtrar por prioridade"><span class="kv-multi-caption">Todos</span><span class="kv-multi-chevron">▾</span></summary><div class="kv-multi-options" role="group" aria-label="Opções de prioridade"></div></details></div>
+        <div class="kv-multi-field"><span class="kv-multi-label">Empresa</span><details class="kv-multi" id="pedidos-filter-empresa"><summary aria-label="Filtrar por empresa"><span class="kv-multi-caption">Todos</span><span class="kv-multi-chevron">▾</span></summary><div class="kv-multi-options" role="group" aria-label="Opções de empresa"></div></details></div>
         <button type="button" class="kv-clear-pedidos" onclick="kvLimparFiltrosPedidos()">Limpar filtros</button>
       </div>
       </div>
@@ -635,6 +635,6 @@
   </div>
 </div>
 
-<script src="js/app.js?v=1.2.19"></script>
+<script src="js/app.js?v=1.2.20"></script>
 </body>
 </html>
