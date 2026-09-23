@@ -67,6 +67,7 @@ function toDB(p) {
     obs: p.obs||null, status: p.status||'Solicitado',
     doc_pc: p.docPC||null, doc_fatura: p.docFatura||null, doc_nfe: p.docNFE||null,
     rastreio: p.rastreio||null, previsao_entrega: p.previsaoEntrega||null,
+    data_revisada_entrega: p.dataRevisadaEntrega||null,
     periodicidade: p.periodicidade||null, proxima_compra: p.proximaCompra||null,
     motivo_reposicao: p.motivoReposicao||null,
     data_cotacao: p.dataCotacao||null, data_pedido_compra: p.dataPedidoCompra||null,
@@ -94,6 +95,7 @@ function fromDB(r) {
     obs: r.obs, status: r.status,
     docPC: r.doc_pc, docFatura: r.doc_fatura, docNFE: r.doc_nfe,
     rastreio: r.rastreio, previsaoEntrega: r.previsao_entrega,
+    dataRevisadaEntrega: r.data_revisada_entrega,
     periodicidade: r.periodicidade, proximaCompra: r.proxima_compra,
     motivoReposicao: r.motivo_reposicao,
     dataCotacao: r.data_cotacao, dataPedidoCompra: r.data_pedido_compra,
@@ -2284,7 +2286,7 @@ function toast(msg, type='success') {
 // =========================================================
 window.compradorMode = false;
 window._pendingTab = null;
-const COMPRADOR_PASSWORD = 'Kovalent@123'; // ← altere aqui
+const COMPRADOR_PASSWORD = null;// v1.2.23: login legado desativado // ← altere aqui
 
 function requireComprador(tab) {
   if (window.compradorMode) { switchTab(tab); return; }
@@ -2746,7 +2748,7 @@ function submitLancamentoDireto() {
 // MODO ALMOXARIFE
 // =========================================================
 window.almoxarifeMode = false;
-const ALMOXARIFE_PASSWORD = 'Almoxarife@123'; // ← altere aqui
+const ALMOXARIFE_PASSWORD = null;// v1.2.23: login legado desativado // ← altere aqui
 const ALMOX_STATUSES = ['Lançar NF','Conferência','Aguardando Identificação','Amostragem','Aguardando Retirada do Estoque','Finalizado'];
 
 function toggleModoAlmoxarife() {
@@ -2975,6 +2977,7 @@ function fromDB(r) {
     obs: r.obs, status: r.status,
     docPC: r.doc_pc, docFatura: r.doc_fatura, docNFE: r.doc_nfe,
     rastreio: r.rastreio, previsaoEntrega: r.previsao_entrega,
+    dataRevisadaEntrega: r.data_revisada_entrega,
     periodicidade: r.periodicidade, proximaCompra: r.proxima_compra,
     motivoReposicao: r.motivo_reposicao,
     dataCotacao: r.data_cotacao, dataPedidoCompra: r.data_pedido_compra,
@@ -3003,6 +3006,7 @@ function toDB(p) {
     obs: p.obs||null, status: p.status||'Solicitado',
     doc_pc: p.docPC||null, doc_fatura: p.docFatura||null, doc_nfe: p.docNFE||null,
     rastreio: p.rastreio||null, previsao_entrega: p.previsaoEntrega||null,
+    data_revisada_entrega: p.dataRevisadaEntrega||null,
     periodicidade: p.periodicidade||null, proxima_compra: p.proximaCompra||null,
     motivo_reposicao: p.motivoReposicao||null,
     data_cotacao: p.dataCotacao||null, data_pedido_compra: p.dataPedidoCompra||null,
@@ -3577,7 +3581,8 @@ const STATUS_INFO_CONFIG = [
   { status:'A Caminho', role:'compras', fields:[
     { key:'dataACaminho', label:'Data A Caminho', type:'date' },
     { key:'rastreio', label:'Código de Rastreio', type:'text' },
-    { key:'previsaoEntrega', label:'Previsão de Entrega', type:'date' }
+    { key:'previsaoEntrega', label:'Previsão de Entrega', type:'date' },
+    { key:'dataRevisadaEntrega', label:'Data Revisada de Entrega', type:'date' }
   ]},
   { status:'Lançar NF', role:'almox', fields:[
     { key:'dataLancarNF', label:'Data Lançar NF', type:'date' },
@@ -5222,3 +5227,209 @@ document.addEventListener('DOMContentLoaded', () => {
     campo.addEventListener('change', kvAtualizarPrazoNecessidade);
   }
 });
+
+
+// =========================================================
+// v1.2.23 — PERFIS SUPABASE + CENTRAL DE PENDÊNCIAS
+// =========================================================
+window.kvIsAdmin = false;
+
+function kvApiHeaders(prefer) {
+  const h = {'Content-Type':'application/json','apikey':SUPA_KEY};
+  try {
+    const raw = localStorage.getItem(KV_AUTH_STORAGE);
+    const sess = raw ? JSON.parse(raw) : null;
+    h.Authorization = 'Bearer ' + (sess?.access_token || SUPA_KEY);
+  } catch(e) { h.Authorization = 'Bearer ' + SUPA_KEY; }
+  if (prefer) h.Prefer = prefer;
+  return h;
+}
+
+// Mantém as rotinas antigas compatíveis e, quando houver sessão Auth,
+// passa o JWT real ao PostgREST. Isso prepara o fechamento futuro do RLS.
+function kvSyncApiAuthorization() {
+  const h = kvApiHeaders();
+  SUPA_HEADERS.Authorization = h.Authorization;
+}
+
+const _kvSaveSupabaseSessionV123 = kvSaveSupabaseSession;
+kvSaveSupabaseSession = function(payload) {
+  _kvSaveSupabaseSessionV123(payload);
+  kvSyncApiAuthorization();
+};
+const _kvClearSessionV123 = kvClearSession;
+kvClearSession = function() {
+  _kvClearSessionV123();
+  window.kvIsAdmin = false;
+  SUPA_HEADERS.Authorization = 'Bearer ' + SUPA_KEY;
+};
+
+async function kvFetchOwnProfile(accessToken) {
+  const res = await fetch(SUPA_URL + '/rest/v1/rpc/meu_perfil', {
+    method:'POST',
+    headers:{'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'Bearer '+accessToken},
+    body:'{}'
+  });
+  if (!res.ok) throw new Error('Não foi possível consultar o perfil: HTTP ' + res.status);
+  const rows = await res.json().catch(()=>[]);
+  const p = Array.isArray(rows) ? rows[0] : rows;
+  if (!p || p.ativo !== true) return null;
+  return String(p.perfil || '').toUpperCase();
+}
+
+async function kvEnterAuthenticatedUser(payload) {
+  if (!payload?.access_token || !payload?.user) throw new Error('Sessão inválida.');
+  kvSaveSupabaseSession(payload);
+  window.kvAuthUser = payload.user;
+  const perfil = await kvFetchOwnProfile(payload.access_token);
+  window.kvIsAdmin = perfil === 'ADMIN';
+  if (perfil === 'ADMIN' || perfil === 'COMPRADOR') {
+    window.kvAccessRole = perfil === 'ADMIN' ? 'admin' : 'comprador';
+    kvHideGate();
+    enableCompradorMode();
+    window.kvAccessRole = perfil === 'ADMIN' ? 'admin' : 'comprador';
+    kvConfigureNavigationForRole();
+    await dbLoad(); renderPedidosTable(); renderProgramadasTable(); updateUnifiedLoginButton();
+    return;
+  }
+  if (perfil === 'ALMOXARIFE') {
+    window.kvAccessRole = 'almoxarife';
+    kvHideGate(); enableAlmoxarifeMode(); window.kvAccessRole='almoxarife';
+    kvConfigureNavigationForRole();
+    await dbLoad(); renderPedidosTable(); renderProgramadasTable(); updateUnifiedLoginButton();
+    return;
+  }
+  await kvEnterSolicitante(payload.user);
+  kvSyncApiAuthorization();
+}
+
+loginFromGate = async function() {
+  const user=(document.getElementById('auth-user')?.value||'').trim().toLowerCase();
+  const password=document.getElementById('auth-password')?.value||'';
+  const err=document.getElementById('auth-login-error'); if(err) err.textContent='';
+  if(!user || !password){ if(err) err.textContent='Informe o e-mail e a senha.'; return; }
+  if(!user.includes('@')) { if(err) err.textContent='Use seu e-mail cadastrado no Compras Nacionais.'; return; }
+  try {
+    const data=await kvAuthFetch('/auth/v1/token?grant_type=password',{email:user,password});
+    await kvEnterAuthenticatedUser(data);
+  } catch(e) {
+    if(err) err.textContent='E-mail ou senha inválidos. Se acabou de se cadastrar, verifique se o e-mail precisa ser confirmado.';
+  }
+};
+
+kvRestoreSession = async function() {
+  // v1.2.23 não restaura mais os antigos perfis internos por senha local.
+  sessionStorage.removeItem(KV_ROLE_STORAGE);
+  const raw=localStorage.getItem(KV_AUTH_STORAGE); if(!raw) return false;
+  try {
+    let s=JSON.parse(raw); if(!s.user) throw new Error('Sessão inválida');
+    if(s.expires_at && s.expires_at <= Math.floor(Date.now()/1000)+30 && s.refresh_token){
+      const refreshed=await kvAuthFetch('/auth/v1/token?grant_type=refresh_token',{refresh_token:s.refresh_token});
+      kvSaveSupabaseSession(refreshed); s=JSON.parse(localStorage.getItem(KV_AUTH_STORAGE));
+    }
+    await kvEnterAuthenticatedUser(s); return true;
+  } catch(e){ console.warn('Falha ao restaurar sessão v1.2.23',e); localStorage.removeItem(KV_AUTH_STORAGE); return false; }
+};
+
+// ADMIN herda integralmente o papel operacional de Comprador.
+const _kvConfigureNavigationForRoleV123 = kvConfigureNavigationForRole;
+kvConfigureNavigationForRole = function() {
+  const originalRole = window.kvAccessRole;
+  if (originalRole === 'admin') window.kvAccessRole = 'comprador';
+  _kvConfigureNavigationForRoleV123();
+  window.kvAccessRole = originalRole;
+  const pend = document.getElementById('nav-pendencias');
+  if (pend) pend.style.display = ['admin','comprador','almoxarife'].includes(originalRole) ? '' : 'none';
+};
+
+const _updateUnifiedLoginButtonV123 = updateUnifiedLoginButton;
+updateUnifiedLoginButton = function() {
+  _updateUnifiedLoginButtonV123();
+  const label=document.getElementById('login-label');
+  if(label && window.kvAccessRole==='admin') label.textContent='ADMIN · Sair';
+};
+
+requireComprador = function(tab) {
+  if (window.kvAccessRole === 'admin' || window.kvAccessRole === 'comprador' || window.compradorMode) { switchTab(tab); return; }
+  if (window.kvAccessRole === 'almoxarife' && tab === 'painel') { switchTab('painel'); setTimeout(()=>{try{switchKPI('almox')}catch(e){}},50); return; }
+  toast('Acesso exclusivo dos perfis Admin/Comprador.', 'error');
+};
+requireAlmoxarife = function(tab) {
+  if (['admin','almoxarife','comprador'].includes(window.kvAccessRole)) { switchTab(tab); return; }
+  toast('Acesso exclusivo dos perfis Admin/Comprador/Almoxarife.', 'error');
+};
+function requirePendencias(tab) {
+  if (['admin','almoxarife','comprador'].includes(window.kvAccessRole)) { switchTab(tab); return; }
+  toast('Acesso exclusivo da equipe de Compras/Almoxarifado.', 'error');
+}
+
+function kvParseDate(v) {
+  if(!v) return null; const str=String(v).trim(); let d;
+  if(/^\d{4}-\d{2}-\d{2}/.test(str)) d=new Date(str.slice(0,10)+'T12:00:00');
+  else if(/^\d{2}\/\d{2}\/\d{4}$/.test(str)){const [a,m,y]=str.split('/');d=new Date(+y,+m-1,+a,12);}
+  else d=new Date(str);
+  return isNaN(d) ? null : d;
+}
+function kvDateOnly(d){ return new Date(d.getFullYear(),d.getMonth(),d.getDate(),12); }
+function kvCalendarDiffDays(a,b){ return Math.round((kvDateOnly(b)-kvDateOnly(a))/86400000); }
+function kvBusinessDaysElapsed(start,end){
+  start=kvParseDate(start); end=end?kvParseDate(end):new Date(); if(!start||!end||end<=start) return 0;
+  let c=0,d=kvDateOnly(start); const last=kvDateOnly(end); d.setDate(d.getDate()+1);
+  while(d<=last){ const wd=d.getDay(); if(wd!==0&&wd!==6)c++; d.setDate(d.getDate()+1); }
+  return c;
+}
+function kvEntregaRef(p){ return p.dataRevisadaEntrega || p.previsaoEntrega || ''; }
+function kvTemSaldoPendente(p){
+  if(['Finalizado','Cancelado'].includes(p.status)) return false;
+  try { if(typeof pedidoRecebidoTotal==='function' && pedidoRecebidoTotal(p)) return false; } catch(e){}
+  const its=p.itens||[]; if(!its.length) return !p.dataRecebimento;
+  return its.some(i=>{
+    const q=Number(i.qtd||i.quantidade||0); const r=Number(i.qtdRecebida ?? i.quantidadeRecebida ?? 0);
+    return q>0 ? r<q : !p.dataRecebimento;
+  });
+}
+function kvPendenciasDoPedido(p){
+  const out=[]; const hoje=kvDateOnly(new Date()); const ref=kvParseDate(kvEntregaRef(p)); const saldo=kvTemSaldoPendente(p);
+  // Pendências administrativas têm precedência sobre alerta físico redundante.
+  if(p.status==='Lançar NF') out.push({tipo:'NF pendente',icon:'🧾',nivel:'warn',prazo:p.dataLancarNF||'',dias:null});
+  if(p.status==='Conferência') out.push({tipo:'Conferência pendente',icon:'🔍',nivel:'warn',prazo:p.dataConferencia||'',dias:null});
+  if(p.status==='Recebimento Parcial') out.push({tipo:'Recebimento parcial',icon:'📦',nivel:'warn',prazo:kvEntregaRef(p),dias:ref?kvCalendarDiffDays(hoje,ref):null});
+  if(p.status==='Cotação' && p.dataCotacao && kvBusinessDaysElapsed(p.dataCotacao,hoje)>2)
+    out.push({tipo:'Cotação parada',icon:'⏳',nivel:'danger',prazo:p.dataCotacao,dias:kvBusinessDaysElapsed(p.dataCotacao,hoje)});
+  const administrativo=['Lançar NF','Conferência','Aguardando Identificação','Amostragem','Aguardando Retirada do Estoque','Finalizado','Cancelado'];
+  if(saldo && ref && !administrativo.includes(p.status)){
+    const diff=kvCalendarDiffDays(hoje,ref);
+    if(diff<0) out.push({tipo:'Entrega atrasada',icon:'🔴',nivel:'danger',prazo:kvEntregaRef(p),dias:Math.abs(diff)});
+    else if(diff<=3) out.push({tipo:'Entrega próxima',icon:'🟠',nivel:'soon',prazo:kvEntregaRef(p),dias:diff});
+  }
+  return out;
+}
+function kvAllPendencias(){ return (pedidos||[]).flatMap(p=>kvPendenciasDoPedido(p).map(x=>({...x,pedido:p}))); }
+function kvFillPendenciaFilters(){
+  const defs=[['pend-filter-setor','departamento'],['pend-filter-prioridade','prioridade'],['pend-filter-empresa','empresa']];
+  defs.forEach(([id,key])=>{const el=document.getElementById(id); if(!el)return; const cur=el.value; const vals=[...new Set((pedidos||[]).map(p=>p[key]).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),'pt-BR')); el.innerHTML='<option value="">Todos</option>'+vals.map(v=>`<option>${String(v).replace(/</g,'&lt;')}</option>`).join(''); el.value=cur;});
+}
+function renderPendencias(){
+  if(!['admin','comprador','almoxarife'].includes(window.kvAccessRole)) return;
+  kvFillPendenciaFilters();
+  const all=kvAllPendencias(); const q=(document.getElementById('pend-search')?.value||'').toLowerCase();
+  const tipo=document.getElementById('pend-filter-tipo')?.value||'', setor=document.getElementById('pend-filter-setor')?.value||'', pri=document.getElementById('pend-filter-prioridade')?.value||'', emp=document.getElementById('pend-filter-empresa')?.value||'';
+  const rows=all.filter(x=>{const p=x.pedido; const hay=[p.sc,p.solicitante,p.departamento,p.empresa,p.fornecedorEsc,...(p.itens||[]).map(i=>i.descricao)].join(' ').toLowerCase(); return (!q||hay.includes(q))&&(!tipo||x.tipo===tipo)&&(!setor||p.departamento===setor)&&(!pri||p.prioridade===pri)&&(!emp||p.empresa===emp);});
+  const counts={total:all.length,atraso:all.filter(x=>x.tipo==='Entrega atrasada').length,proxima:all.filter(x=>x.tipo==='Entrega próxima').length,cotacao:all.filter(x=>x.tipo==='Cotação parada').length,adm:all.filter(x=>['NF pendente','Conferência pendente','Recebimento parcial'].includes(x.tipo)).length};
+  const k=document.getElementById('pendencias-kpis'); if(k) k.innerHTML=`
+    <div class="kv-pend-kpi"><span>Pendências</span><strong>${counts.total}</strong><small>ações identificadas</small></div>
+    <div class="kv-pend-kpi danger"><span>Entregas atrasadas</span><strong>${counts.atraso}</strong><small>prazo vencido</small></div>
+    <div class="kv-pend-kpi soon"><span>Próximas entregas</span><strong>${counts.proxima}</strong><small>até 3 dias</small></div>
+    <div class="kv-pend-kpi"><span>Cotações paradas</span><strong>${counts.cotacao}</strong><small>mais de 2 dias úteis</small></div>
+    <div class="kv-pend-kpi"><span>Operacionais</span><strong>${counts.adm}</strong><small>NF, conferência e parcial</small></div>`;
+  const t=document.getElementById('pendencias-table'); if(!t)return;
+  if(!rows.length){t.innerHTML='<div class="empty-state"><div class="icon">✅</div><h3>Nenhuma pendência encontrada</h3><p>Os filtros atuais não possuem ações pendentes.</p></div>';return;}
+  t.innerHTML=`<table><thead><tr><th>Pendência</th><th>SC</th><th>Setor</th><th>Empresa</th><th>Fornecedor</th><th>Prioridade</th><th>Prazo / referência</th><th>Situação</th><th></th></tr></thead><tbody>${rows.map(x=>{const p=x.pedido; let sit='Ação necessária'; if(x.tipo==='Entrega atrasada')sit=`${x.dias} dia${x.dias===1?'':'s'} em atraso`; else if(x.tipo==='Entrega próxima')sit=x.dias===0?'Entrega prevista hoje':`Faltam ${x.dias} dia${x.dias===1?'':'s'}`; else if(x.tipo==='Cotação parada')sit=`${x.dias} dias úteis`; return `<tr><td><span class="kv-pend-badge ${x.nivel}">${x.icon} ${x.tipo}</span></td><td><strong>${p.sc||'—'}</strong></td><td>${p.departamento||'—'}</td><td>${p.empresa||'—'}</td><td>${p.fornecedorEsc||p.fornecedorSug||'—'}</td><td>${p.prioridade||'—'}</td><td>${x.prazo?formatDate(x.prazo):'—'}</td><td>${sit}</td><td><button class="btn btn-secondary" onclick="openModal('${p.sc}')">Abrir</button></td></tr>`}).join('')}</tbody></table>`;
+}
+function kvLimparPendencias(){['pend-search','pend-filter-tipo','pend-filter-setor','pend-filter-prioridade','pend-filter-empresa'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});renderPendencias();}
+
+const _switchTabV123 = switchTab;
+switchTab = function(name){ _switchTabV123(name); if(name==='pendencias') renderPendencias(); };
+
+// Exibe a data revisada também no objeto em memória após cargas futuras.
+kvSyncApiAuthorization();
