@@ -770,9 +770,25 @@ body:not(.auth-locked) #tab-programadas>.page-title,body:not(.auth-locked) #tab-
 /* =========================================================
    v1.2.23 — CENTRAL DE PENDÊNCIAS
    ========================================================= */
-.kv-pend-toolbar{display:grid;grid-template-columns:minmax(260px,1.6fr) repeat(4,minmax(145px,.75fr)) auto;gap:10px;align-items:end}
+.kv-pend-toolbar{display:grid;grid-template-columns:minmax(240px,1.45fr) repeat(5,minmax(135px,.75fr)) auto;gap:10px;align-items:end}
 .kv-pend-toolbar input,.kv-pend-toolbar select{width:100%;min-width:0}
 .kv-pend-kpi{background:#fff;border:1px solid #dce6f1;border-radius:12px;padding:16px;min-height:96px;display:flex;flex-direction:column;justify-content:center}
 .kv-pend-kpi span{font-size:11px;color:#6b7f96;text-transform:uppercase;letter-spacing:.45px}.kv-pend-kpi strong{font-size:25px;color:#0b4f7d;margin:3px 0}.kv-pend-kpi small{font-size:11px;color:#8797aa}.kv-pend-kpi.danger{border-color:#fecaca;background:#fffafa}.kv-pend-kpi.danger strong{color:#dc2626}.kv-pend-kpi.soon{border-color:#fed7aa;background:#fffaf5}.kv-pend-kpi.soon strong{color:#d97706}
 .kv-pend-badge{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:5px 9px;font-size:11px;font-weight:700;white-space:nowrap;background:#eef5fb;color:#164e75}.kv-pend-badge.danger{background:#fee2e2;color:#b91c1c}.kv-pend-badge.warn{background:#fef3c7;color:#92400e}.kv-pend-badge.soon{background:#ffedd5;color:#9a3412}
 @media(max-width:1200px){.kv-pend-toolbar{grid-template-columns:1fr 1fr 1fr}.kv-pend-toolbar input{grid-column:1/-1}}
+
+/* v1.2.24 — filtros multisseleção da Central de Pendências */
+#tab-pendencias .kv-multi-field{min-width:0;position:relative;display:flex;flex-direction:column;gap:6px}
+#tab-pendencias .kv-multi-label{font-size:11px;font-weight:700;color:#48637b}
+#tab-pendencias .kv-multi{position:relative;min-width:0}
+#tab-pendencias .kv-multi summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:40px;padding:9px 12px;background:#fff;border:1px solid #cfdeed;border-radius:9px;color:#173955;font-size:13px;font-weight:600}
+#tab-pendencias .kv-multi summary::-webkit-details-marker{display:none}
+#tab-pendencias .kv-multi summary:focus-visible{outline:2px solid #078dde;outline-offset:2px}
+#tab-pendencias .kv-multi-caption{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#tab-pendencias .kv-multi-chevron{flex-shrink:0;color:#52718a}
+#tab-pendencias .kv-multi-active summary{border-color:#078dde;background:#eef8ff}
+#tab-pendencias .kv-multi-options{position:absolute;top:calc(100% + 5px);left:0;right:0;z-index:100;min-width:190px;max-height:260px;overflow-y:auto;padding:6px;background:#fff;border:1px solid #cfdeed;border-radius:10px;box-shadow:0 12px 28px rgba(15,48,80,.16)}
+#tab-pendencias .kv-multi-option{display:flex;flex-direction:row;align-items:center;gap:9px;padding:9px 8px;border-radius:6px;font-size:12px;font-weight:500;color:#173955;cursor:pointer;white-space:normal}
+#tab-pendencias .kv-multi-option:hover{background:#edf7fd}
+#tab-pendencias .kv-multi-option input{width:16px;height:16px;min-height:16px;margin:0;flex-shrink:0;accent-color:#078dde}
+#tab-pendencias .kv-multi-empty{display:block;padding:10px;font-size:12px;color:#6c8295}

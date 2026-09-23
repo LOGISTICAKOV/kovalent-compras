@@ -40,15 +40,6 @@
         <div id="auth-login-error" class="auth-error"></div>
         <button class="auth-primary" onclick="loginFromGate()">→ &nbsp; Entrar</button>
 
-        <div class="auth-divider"><span>Acessos internos</span></div>
-        <div class="auth-internal-grid">
-          <button class="auth-internal" type="button" onclick="document.getElementById('auth-user').value='COMPRADOR';document.getElementById('auth-password').focus()">
-            <span class="auth-internal-icon">🛒</span><span><b>COMPRADOR</b><small>Usar senha atual</small></span>
-          </button>
-          <button class="auth-internal" type="button" onclick="document.getElementById('auth-user').value='ALMOXARIFE';document.getElementById('auth-password').focus()">
-            <span class="auth-internal-icon">📦</span><span><b>ALMOXARIFE</b><small>Usar senha atual</small></span>
-          </button>
-        </div>
         <div class="auth-signup-call">Ainda não tem uma conta? <button type="button" onclick="showSignupView()">Cadastre-se aqui →</button></div>
       </div>
 
@@ -346,7 +337,7 @@
 
 
 
-  <!-- ===================== CENTRAL DE PENDÊNCIAS v1.2.23 ===================== -->
+  <!-- ===================== CENTRAL DE PENDÊNCIAS v1.2.24 ===================== -->
   <div class="tab-pane" id="tab-pendencias">
     <section class="kv-inner-hero">
       <div class="kv-inner-hero-copy"><div class="page-title">Central de Pendências</div><div class="page-sub">Priorize entregas, cotações e etapas operacionais que exigem ação.</div><div class="kv-inner-hero-line"></div></div>
@@ -357,10 +348,11 @@
       <div id="pendencias-kpis" class="kv-summary-grid kv-summary-grid-5"></div>
       <div class="kv-toolbar kv-pend-toolbar">
         <input id="pend-search" type="text" placeholder="🔍 Buscar por SC, item, setor, fornecedor..." oninput="renderPendencias()">
-        <select id="pend-filter-tipo" onchange="renderPendencias()"><option value="">Todas as pendências</option><option>Entrega atrasada</option><option>Entrega próxima</option><option>Cotação parada</option><option>NF pendente</option><option>Recebimento parcial</option><option>Conferência pendente</option></select>
-        <select id="pend-filter-setor" onchange="renderPendencias()"><option value="">Todos</option></select>
-        <select id="pend-filter-prioridade" onchange="renderPendencias()"><option value="">Todos</option></select>
-        <select id="pend-filter-empresa" onchange="renderPendencias()"><option value="">Todos</option></select>
+        <div class="kv-multi-field"><span class="kv-multi-label">Tipo de pendência</span><details class="kv-multi" id="pend-filter-tipo"><summary><span class="kv-multi-caption">Todos</span><span class="kv-multi-chevron">▾</span></summary><div class="kv-multi-options"></div></details></div>
+        <div class="kv-multi-field"><span class="kv-multi-label">Setor</span><details class="kv-multi" id="pend-filter-setor"><summary><span class="kv-multi-caption">Todos</span><span class="kv-multi-chevron">▾</span></summary><div class="kv-multi-options"></div></details></div>
+        <div class="kv-multi-field"><span class="kv-multi-label">Status</span><details class="kv-multi" id="pend-filter-status"><summary><span class="kv-multi-caption">Todos</span><span class="kv-multi-chevron">▾</span></summary><div class="kv-multi-options"></div></details></div>
+        <div class="kv-multi-field"><span class="kv-multi-label">Prioridade</span><details class="kv-multi" id="pend-filter-prioridade"><summary><span class="kv-multi-caption">Todos</span><span class="kv-multi-chevron">▾</span></summary><div class="kv-multi-options"></div></details></div>
+        <div class="kv-multi-field"><span class="kv-multi-label">Empresa</span><details class="kv-multi" id="pend-filter-empresa"><summary><span class="kv-multi-caption">Todos</span><span class="kv-multi-chevron">▾</span></summary><div class="kv-multi-options"></div></details></div>
         <button class="kv-clear-pedidos" onclick="kvLimparPendencias()">Limpar filtros</button>
       </div>
       <div class="card kv-table-card"><div class="data-table-wrap" id="pendencias-table"></div></div>
@@ -665,6 +657,6 @@
   </div>
 </div>
 
-<script src="js/app.js?v=1.2.23"></script>
+<script src="js/app.js?v=1.2.24"></script>
 </body>
 </html>

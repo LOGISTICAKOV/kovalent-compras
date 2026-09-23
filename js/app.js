@@ -2286,7 +2286,7 @@ function toast(msg, type='success') {
 // =========================================================
 window.compradorMode = false;
 window._pendingTab = null;
-const COMPRADOR_PASSWORD = null;// v1.2.23: login legado desativado // ← altere aqui
+const COMPRADOR_PASSWORD = null;// v1.2.24: login legado desativado // ← altere aqui
 
 function requireComprador(tab) {
   if (window.compradorMode) { switchTab(tab); return; }
@@ -2748,7 +2748,7 @@ function submitLancamentoDireto() {
 // MODO ALMOXARIFE
 // =========================================================
 window.almoxarifeMode = false;
-const ALMOXARIFE_PASSWORD = null;// v1.2.23: login legado desativado // ← altere aqui
+const ALMOXARIFE_PASSWORD = null;// v1.2.24: login legado desativado // ← altere aqui
 const ALMOX_STATUSES = ['Lançar NF','Conferência','Aguardando Identificação','Amostragem','Aguardando Retirada do Estoque','Finalizado'];
 
 function toggleModoAlmoxarife() {
@@ -5230,7 +5230,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 // =========================================================
-// v1.2.23 — PERFIS SUPABASE + CENTRAL DE PENDÊNCIAS
+// v1.2.24 — PERFIS SUPABASE + CENTRAL DE PENDÊNCIAS
 // =========================================================
 window.kvIsAdmin = false;
 
@@ -5318,7 +5318,7 @@ loginFromGate = async function() {
 };
 
 kvRestoreSession = async function() {
-  // v1.2.23 não restaura mais os antigos perfis internos por senha local.
+  // v1.2.24 não restaura mais os antigos perfis internos por senha local.
   sessionStorage.removeItem(KV_ROLE_STORAGE);
   const raw=localStorage.getItem(KV_AUTH_STORAGE); if(!raw) return false;
   try {
@@ -5328,7 +5328,7 @@ kvRestoreSession = async function() {
       kvSaveSupabaseSession(refreshed); s=JSON.parse(localStorage.getItem(KV_AUTH_STORAGE));
     }
     await kvEnterAuthenticatedUser(s); return true;
-  } catch(e){ console.warn('Falha ao restaurar sessão v1.2.23',e); localStorage.removeItem(KV_AUTH_STORAGE); return false; }
+  } catch(e){ console.warn('Falha ao restaurar sessão v1.2.24',e); localStorage.removeItem(KV_AUTH_STORAGE); return false; }
 };
 
 // ADMIN herda integralmente o papel operacional de Comprador.
@@ -5405,16 +5405,42 @@ function kvPendenciasDoPedido(p){
   return out;
 }
 function kvAllPendencias(){ return (pedidos||[]).flatMap(p=>kvPendenciasDoPedido(p).map(x=>({...x,pedido:p}))); }
+function kvPendSelecoes(tipo){
+  const painel=document.querySelector('#pend-filter-'+tipo+' .kv-multi-options');
+  return painel?[...painel.querySelectorAll('input[type="checkbox"]:checked')].map(c=>c.value):[];
+}
+function kvPendAtualizarLegenda(tipo){
+  const detalhes=document.getElementById('pend-filter-'+tipo); if(!detalhes)return;
+  const valores=kvPendSelecoes(tipo), legenda=detalhes.querySelector('.kv-multi-caption');
+  if(legenda) legenda.textContent=valores.length===0?'Todos':valores.length===1?valores[0]:valores.length+' selecionados';
+  detalhes.classList.toggle('kv-multi-active',valores.length>0);
+}
+function kvPendPopularFiltro(tipo,valores){
+  const detalhes=document.getElementById('pend-filter-'+tipo), painel=detalhes?.querySelector('.kv-multi-options'); if(!painel)return;
+  const anteriores=new Set(kvPendSelecoes(tipo));
+  valores=[...new Set(valores.map(v=>String(v||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  anteriores.forEach(v=>{if(!valores.includes(v))valores.push(v)});
+  const atuais=[...painel.querySelectorAll('input[type="checkbox"]')].map(c=>c.value);
+  if(atuais.length!==valores.length||atuais.some((v,i)=>v!==valores[i])){
+    painel.replaceChildren();
+    valores.forEach(valor=>{const label=document.createElement('label');label.className='kv-multi-option';const check=document.createElement('input');check.type='checkbox';check.value=valor;check.checked=anteriores.has(valor);check.addEventListener('change',()=>{kvPendAtualizarLegenda(tipo);renderPendencias()});const span=document.createElement('span');span.textContent=valor;label.append(check,span);painel.append(label)});
+    if(!valores.length){const vazio=document.createElement('span');vazio.className='kv-multi-empty';vazio.textContent='Nenhuma opção disponível';painel.append(vazio)}
+  }
+  kvPendAtualizarLegenda(tipo);
+}
 function kvFillPendenciaFilters(){
-  const defs=[['pend-filter-setor','departamento'],['pend-filter-prioridade','prioridade'],['pend-filter-empresa','empresa']];
-  defs.forEach(([id,key])=>{const el=document.getElementById(id); if(!el)return; const cur=el.value; const vals=[...new Set((pedidos||[]).map(p=>p[key]).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),'pt-BR')); el.innerHTML='<option value="">Todos</option>'+vals.map(v=>`<option>${String(v).replace(/</g,'&lt;')}</option>`).join(''); el.value=cur;});
+  kvPendPopularFiltro('tipo',['Entrega atrasada','Entrega próxima','Cotação parada','NF pendente','Recebimento parcial','Conferência pendente']);
+  kvPendPopularFiltro('setor',(pedidos||[]).map(p=>p.departamento));
+  kvPendPopularFiltro('status',(pedidos||[]).map(p=>p.status));
+  kvPendPopularFiltro('prioridade',(pedidos||[]).map(p=>p.prioridade));
+  kvPendPopularFiltro('empresa',(pedidos||[]).map(p=>p.empresa));
 }
 function renderPendencias(){
   if(!['admin','comprador','almoxarife'].includes(window.kvAccessRole)) return;
   kvFillPendenciaFilters();
   const all=kvAllPendencias(); const q=(document.getElementById('pend-search')?.value||'').toLowerCase();
-  const tipo=document.getElementById('pend-filter-tipo')?.value||'', setor=document.getElementById('pend-filter-setor')?.value||'', pri=document.getElementById('pend-filter-prioridade')?.value||'', emp=document.getElementById('pend-filter-empresa')?.value||'';
-  const rows=all.filter(x=>{const p=x.pedido; const hay=[p.sc,p.solicitante,p.departamento,p.empresa,p.fornecedorEsc,...(p.itens||[]).map(i=>i.descricao)].join(' ').toLowerCase(); return (!q||hay.includes(q))&&(!tipo||x.tipo===tipo)&&(!setor||p.departamento===setor)&&(!pri||p.prioridade===pri)&&(!emp||p.empresa===emp);});
+  const tipos=kvPendSelecoes('tipo'), setores=kvPendSelecoes('setor'), statuses=kvPendSelecoes('status'), prioridades=kvPendSelecoes('prioridade'), empresas=kvPendSelecoes('empresa');
+  const rows=all.filter(x=>{const p=x.pedido; const hay=[p.sc,p.solicitante,p.departamento,p.empresa,p.fornecedorEsc,...(p.itens||[]).map(i=>i.descricao)].join(' ').toLowerCase(); return (!q||hay.includes(q))&&(!tipos.length||tipos.includes(x.tipo))&&(!setores.length||setores.includes(p.departamento))&&(!statuses.length||statuses.includes(p.status))&&(!prioridades.length||prioridades.includes(p.prioridade))&&(!empresas.length||empresas.includes(p.empresa));});
   const counts={total:all.length,atraso:all.filter(x=>x.tipo==='Entrega atrasada').length,proxima:all.filter(x=>x.tipo==='Entrega próxima').length,cotacao:all.filter(x=>x.tipo==='Cotação parada').length,adm:all.filter(x=>['NF pendente','Conferência pendente','Recebimento parcial'].includes(x.tipo)).length};
   const k=document.getElementById('pendencias-kpis'); if(k) k.innerHTML=`
     <div class="kv-pend-kpi"><span>Pendências</span><strong>${counts.total}</strong><small>ações identificadas</small></div>
@@ -5426,7 +5452,11 @@ function renderPendencias(){
   if(!rows.length){t.innerHTML='<div class="empty-state"><div class="icon">✅</div><h3>Nenhuma pendência encontrada</h3><p>Os filtros atuais não possuem ações pendentes.</p></div>';return;}
   t.innerHTML=`<table><thead><tr><th>Pendência</th><th>SC</th><th>Setor</th><th>Empresa</th><th>Fornecedor</th><th>Prioridade</th><th>Prazo / referência</th><th>Situação</th><th></th></tr></thead><tbody>${rows.map(x=>{const p=x.pedido; let sit='Ação necessária'; if(x.tipo==='Entrega atrasada')sit=`${x.dias} dia${x.dias===1?'':'s'} em atraso`; else if(x.tipo==='Entrega próxima')sit=x.dias===0?'Entrega prevista hoje':`Faltam ${x.dias} dia${x.dias===1?'':'s'}`; else if(x.tipo==='Cotação parada')sit=`${x.dias} dias úteis`; return `<tr><td><span class="kv-pend-badge ${x.nivel}">${x.icon} ${x.tipo}</span></td><td><strong>${p.sc||'—'}</strong></td><td>${p.departamento||'—'}</td><td>${p.empresa||'—'}</td><td>${p.fornecedorEsc||p.fornecedorSug||'—'}</td><td>${p.prioridade||'—'}</td><td>${x.prazo?formatDate(x.prazo):'—'}</td><td>${sit}</td><td><button class="btn btn-secondary" onclick="openModal('${p.sc}')">Abrir</button></td></tr>`}).join('')}</tbody></table>`;
 }
-function kvLimparPendencias(){['pend-search','pend-filter-tipo','pend-filter-setor','pend-filter-prioridade','pend-filter-empresa'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});renderPendencias();}
+function kvLimparPendencias(){
+  const busca=document.getElementById('pend-search');if(busca)busca.value='';
+  ['tipo','setor','status','prioridade','empresa'].forEach(tipo=>{const d=document.getElementById('pend-filter-'+tipo);if(!d)return;d.querySelectorAll('input[type="checkbox"]').forEach(c=>c.checked=false);d.open=false;kvPendAtualizarLegenda(tipo)});
+  renderPendencias();
+}
 
 const _switchTabV123 = switchTab;
 switchTab = function(name){ _switchTabV123(name); if(name==='pendencias') renderPendencias(); };
