@@ -5230,7 +5230,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 // =========================================================
-// v1.2.24 — PERFIS SUPABASE + CENTRAL DE PENDÊNCIAS
+// v1.2.25 — PERFIS SUPABASE + CENTRAL DE PENDÊNCIAS
 // =========================================================
 window.kvIsAdmin = false;
 
@@ -5463,3 +5463,78 @@ switchTab = function(name){ _switchTabV123(name); if(name==='pendencias') render
 
 // Exibe a data revisada também no objeto em memória após cargas futuras.
 kvSyncApiAuthorization();
+
+
+// =========================================================
+// v1.2.25 — GESTÃO DE USUÁRIOS E ACESSOS (ADMIN)
+// =========================================================
+window.kvAdminUsers = [];
+
+async function kvAdminRpc(name, body) {
+  const res = await fetch(SUPA_URL + '/rest/v1/rpc/' + name, {
+    method:'POST',
+    headers:kvApiHeaders(),
+    body:JSON.stringify(body || {})
+  });
+  if (!res.ok) {
+    let msg = 'Erro HTTP ' + res.status;
+    try { const data = await res.json(); msg = data.message || data.details || msg; } catch(e) {}
+    throw new Error(msg);
+  }
+  if (res.status === 204) return null;
+  const txt = await res.text();
+  return txt ? JSON.parse(txt) : null;
+}
+
+function kvRenderAdminUsers() {
+  const box=document.getElementById('admin-users-table'); if(!box) return;
+  const rows=Array.isArray(window.kvAdminUsers)?window.kvAdminUsers:[];
+  if(!rows.length){box.innerHTML='<div class="empty-state"><div class="icon">👥</div><h3>Nenhum usuário encontrado</h3><p>Não há contas disponíveis para administração.</p></div>';return;}
+  const profiles=['SOLICITANTE','COMPRADOR','ALMOXARIFE','ADMIN'];
+  box.innerHTML=`<table class="kv-admin-table"><thead><tr><th>Usuário</th><th>Setor</th><th>Perfil</th><th>Acesso</th><th>Último login</th><th></th></tr></thead><tbody>${rows.map((u,i)=>{
+    const opts=profiles.map(p=>`<option value="${p}" ${String(u.perfil).toUpperCase()===p?'selected':''}>${p}</option>`).join('');
+    const last=u.ultimo_login?new Date(u.ultimo_login).toLocaleString('pt-BR'):'Nunca';
+    return `<tr data-user-row="${i}"><td><strong>${escapeHTML(u.email||'—')}</strong><small class="kv-admin-created">Cadastrado em ${u.criado_em?new Date(u.criado_em).toLocaleDateString('pt-BR'):'—'}</small></td><td>${escapeHTML(u.setor||'—')}</td><td><select class="kv-admin-profile" aria-label="Perfil de ${escapeHTML(u.email||'usuário')}">${opts}</select></td><td><label class="kv-admin-switch"><input class="kv-admin-active" type="checkbox" ${u.ativo!==false?'checked':''}><span>${u.ativo!==false?'Ativo':'Inativo'}</span></label></td><td>${escapeHTML(last)}</td><td><button class="btn btn-primary kv-admin-save" onclick="kvSaveAdminUser(${i},this)">Salvar</button></td></tr>`;
+  }).join('')}</tbody></table>`;
+  box.querySelectorAll('.kv-admin-active').forEach(c=>c.addEventListener('change',()=>{const span=c.parentElement.querySelector('span'); if(span)span.textContent=c.checked?'Ativo':'Inativo';}));
+}
+
+async function kvLoadAdminUsers() {
+  const section=document.getElementById('admin-users-section');
+  if(!section) return;
+  if(window.kvAccessRole!=='admin'){section.style.display='none';return;}
+  section.style.display='block';
+  const box=document.getElementById('admin-users-table'); if(box)box.innerHTML='<div class="kv-admin-loading">Carregando usuários...</div>';
+  try {
+    const data=await kvAdminRpc('listar_usuarios_admin',{});
+    window.kvAdminUsers=Array.isArray(data)?data:[];
+    kvRenderAdminUsers();
+  } catch(e) {
+    if(box)box.innerHTML='<div class="kv-admin-error">Não foi possível carregar os usuários.<br><small>'+escapeHTML(e.message)+'</small></div>';
+    toast('Erro ao carregar usuários e acessos.','error');
+  }
+}
+
+async function kvSaveAdminUser(index, btn) {
+  if(window.kvAccessRole!=='admin'){toast('Acesso exclusivo do ADMIN.','error');return;}
+  const u=window.kvAdminUsers[index]; const row=document.querySelector(`[data-user-row="${index}"]`); if(!u||!row)return;
+  const perfil=row.querySelector('.kv-admin-profile')?.value;
+  const ativo=!!row.querySelector('.kv-admin-active')?.checked;
+  const original=btn.textContent; btn.disabled=true; btn.textContent='Salvando...';
+  try {
+    await kvAdminRpc('atualizar_usuario_admin',{p_user_id:u.user_id,p_perfil:perfil,p_ativo:ativo});
+    toast('Acesso de '+(u.email||'usuário')+' atualizado.','success');
+    await kvLoadAdminUsers();
+    const me=(window.kvAuthUser?.email||'').toLowerCase();
+    if((u.email||'').toLowerCase()===me && (perfil!=='ADMIN'||!ativo)) toast('Seu próprio perfil foi alterado. A mudança será aplicada integralmente no próximo login.','info');
+  } catch(e) {
+    toast(e.message || 'Não foi possível atualizar o usuário.','error');
+    btn.disabled=false; btn.textContent=original;
+  }
+}
+
+const _switchTabV125 = switchTab;
+switchTab = function(name){
+  _switchTabV125(name);
+  if(name==='config') kvLoadAdminUsers();
+};

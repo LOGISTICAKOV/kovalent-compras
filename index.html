@@ -457,6 +457,20 @@
 
   <!-- ===================== CONFIG ===================== -->
   <div class="tab-pane" id="tab-config">
+    <section id="admin-users-section" class="kv-admin-users" style="display:none">
+      <div class="kv-admin-users-head">
+        <div>
+          <div class="page-title">Usuários e Acessos</div>
+          <div class="page-sub">Gerencie os perfis e o acesso dos usuários cadastrados no Compras Nacionais.</div>
+        </div>
+        <button class="btn btn-secondary" onclick="kvLoadAdminUsers()">↻ Atualizar usuários</button>
+      </div>
+      <div class="kv-admin-note">🔐 Área exclusiva do perfil ADMIN. Usuários sem perfil administrativo cadastrado aparecem como <strong>SOLICITANTE</strong>.</div>
+      <div class="card kv-admin-users-card">
+        <div id="admin-users-table" class="data-table-wrap"><div class="kv-admin-loading">Carregando usuários...</div></div>
+      </div>
+    </section>
+
     <div class="page-title">Configurar Planilha Excel</div>
     <div class="page-sub">Conecte o sistema à sua planilha de controle compartilhada</div>
 
@@ -657,6 +671,6 @@
   </div>
 </div>
 
-<script src="js/app.js?v=1.2.24"></script>
+<script src="js/app.js?v=1.2.25"></script>
 </body>
 </html>
