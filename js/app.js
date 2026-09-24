@@ -77,6 +77,7 @@ function toDB(p) {
     data_amostragem: p.dataAmostragem||null, data_aguardando_ret: p.dataAguardandoRet||null,
     data_finalizado: p.dataFinalizado||null, data_cancelado: p.dataCancelado||null,
     recebido_por: p.recebidoPor||null,
+    criado_por: p.criadoPor||null,
   };
 }
 
@@ -105,6 +106,7 @@ function fromDB(r) {
     dataAmostragem: r.data_amostragem, dataAguardandoRet: r.data_aguardando_ret,
     dataFinalizado: r.data_finalizado, dataCancelado: r.data_cancelado,
     recebidoPor: r.recebido_por,
+    criadoPor: r.criado_por||null,
   };
 }
 
@@ -132,8 +134,31 @@ async function dbLoad() {
   }
 }
 
+// v1.2.26 — autoria do pedido para RLS futuro
+// O UUID vem exclusivamente da sessão autenticada; não existe campo manual na interface.
+function kvGetAuthenticatedUserId() {
+  if (window.kvAuthUser?.id) return String(window.kvAuthUser.id);
+  try {
+    const raw = localStorage.getItem(KV_AUTH_STORAGE);
+    const sess = raw ? JSON.parse(raw) : null;
+    return sess?.user?.id ? String(sess.user.id) : '';
+  } catch (_) {
+    return '';
+  }
+}
+
+function kvAttachCreator(pedido) {
+  if (!pedido) return pedido;
+  if (!pedido.criadoPor) {
+    const userId = kvGetAuthenticatedUserId();
+    if (userId) pedido.criadoPor = userId;
+  }
+  return pedido;
+}
+
 async function dbInsert(p) {
   try {
+    kvAttachCreator(p);
     const res = await fetch(SUPA_URL + '/rest/v1/pedidos', {
       method: 'POST',
       headers: { ...SUPA_HEADERS, 'Prefer': 'return=minimal' },
@@ -2987,6 +3012,7 @@ function fromDB(r) {
     dataAmostragem: r.data_amostragem, dataAguardandoRet: r.data_aguardando_ret,
     dataFinalizado: r.data_finalizado, dataCancelado: r.data_cancelado,
     recebidoPor: r.recebido_por,
+    criadoPor: r.criado_por||null,
   });
 }
 
@@ -3016,6 +3042,7 @@ function toDB(p) {
     data_amostragem: p.dataAmostragem||null, data_aguardando_ret: p.dataAguardandoRet||null,
     data_finalizado: p.dataFinalizado||null, data_cancelado: p.dataCancelado||null,
     recebido_por: p.recebidoPor||null,
+    criado_por: p.criadoPor||null,
   };
 }
 
@@ -5104,6 +5131,7 @@ async function kvGetNextSC() {
 }
 
 async function kvInsertPedidoSeguro(pedido) {
+  kvAttachCreator(pedido);
   // Em caso de dois usuários enviarem exatamente ao mesmo tempo,
   // recalcula a SC e tenta novamente sem criar pedido fantasma na tela.
   for (let tentativa = 0; tentativa < 5; tentativa++) {
