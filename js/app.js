@@ -174,6 +174,39 @@ async function dbInsert(p) {
 
 async function dbUpdate(p) {
   try {
+    // v1.2.27: ALMOXARIFE grava somente os campos operacionais permitidos
+    // pelo RPC seguro. ADMIN/COMPRADOR continuam usando PATCH protegido pelo RLS.
+    if (window.kvAccessRole === 'almoxarife') {
+      normalizePedidoItems(p);
+      const payload = {
+        p_sc: p.sc,
+        p_status: p.status || null,
+        p_itens: p.itens || [],
+        p_doc_nfe: p.docNFE || null,
+        p_data_lancar_nf: p.dataLancarNF || null,
+        p_data_recebimento: p.dataRecebimento || null,
+        p_recebido_por: p.recebidoPor || null,
+        p_data_conferencia: p.dataConferencia || null,
+        p_data_aguardando_id: p.dataAguardandoId || null,
+        p_data_amostragem: p.dataAmostragem || null,
+        p_data_aguardando_ret: p.dataAguardandoRet || null,
+        p_data_finalizado: p.dataFinalizado || null,
+        p_obs: p.obs || null
+      };
+      const res = await fetch(SUPA_URL + '/rest/v1/rpc/atualizar_pedido_almoxarifado', {
+        method: 'POST',
+        headers: { ...SUPA_HEADERS, 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) {
+        const txt = await res.text();
+        console.error('dbUpdate almoxarifado RPC error:', txt);
+        toast('Erro ao atualizar: ' + txt, 'error');
+        return false;
+      }
+      return true;
+    }
+
     const sc = encodeURIComponent(p.sc);
     const res = await fetch(SUPA_URL + '/rest/v1/pedidos?sc=eq.' + sc, {
       method: 'PATCH',
@@ -184,8 +217,14 @@ async function dbUpdate(p) {
       const txt = await res.text();
       console.error('dbUpdate error:', txt);
       toast('Erro ao atualizar: ' + txt, 'error');
+      return false;
     }
-  } catch(e) { console.error('dbUpdate exception:', e); toast('Erro conexão ao atualizar', 'error'); }
+    return true;
+  } catch(e) {
+    console.error('dbUpdate exception:', e);
+    toast('Erro conexão ao atualizar', 'error');
+    return false;
+  }
 }
 
 function updateExcelBadge(count) {
