@@ -811,7 +811,7 @@ function openModal(sc) {
     + (canEdit
         ? '<button class="btn btn-secondary" onclick="updateStatus(\'' + sc + '\')">🔄 Atualizar Status</button>'
         : window.almoxarifeMode
-          ? '<span style="font-size:12px;color:#a855f7;display:flex;align-items:center;gap:6px">📦 Almoxarife só pode atualizar a partir de Lançar NF</span>'
+          ? '<span style="font-size:12px;color:#a855f7;display:flex;align-items:center;gap:6px">📦 Almoxarife só pode atualizar a partir de A Caminho</span>'
           : '<span style="font-size:12px;color:#6b7f96;display:flex;align-items:center;gap:6px">🔒 Apenas compradores podem atualizar o status</span>')
         + (window.compradorMode ? '<button class="btn btn-secondary" onclick="openEditModal(\'' + sc + '\')">Editar</button>' : '')
     + (window.compradorMode ? '<button class="btn btn-danger" onclick="confirmarExclusao(\'' + sc + '\')">Excluir</button>' : '')
@@ -2813,7 +2813,7 @@ function submitLancamentoDireto() {
 // =========================================================
 window.almoxarifeMode = false;
 const ALMOXARIFE_PASSWORD = null;// v1.2.24: login legado desativado // ← altere aqui
-const ALMOX_STATUSES = ['Lançar NF','Conferência','Aguardando Identificação','Amostragem','Aguardando Retirada do Estoque','Finalizado'];
+const ALMOX_STATUSES = ['A Caminho','Recebimento Parcial','Lançar NF','Conferência','Aguardando Identificação','Amostragem','Aguardando Retirada do Estoque','Finalizado'];
 
 function toggleModoAlmoxarife() {
   if (!window.almoxarifeMode) {
@@ -3188,7 +3188,7 @@ function openModal(sc) {
 
   document.getElementById('modal-content').innerHTML +=
     '<div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">'
-    + (canEdit ? '<button class="btn btn-secondary" onclick="updateStatus(\'' + p.sc + '\')">🔄 Atualizar Status</button>' : window.almoxarifeMode ? '<span style="font-size:12px;color:#a855f7;display:flex;align-items:center;gap:6px">📦 Almoxarife só pode atualizar a partir de Lançar NF</span>' : '<span style="font-size:12px;color:#6b7f96;display:flex;align-items:center;gap:6px">🔒 Apenas compradores podem atualizar o status</span>')
+    + (canEdit ? '<button class="btn btn-secondary" onclick="updateStatus(\'' + p.sc + '\')">🔄 Atualizar Status</button>' : window.almoxarifeMode ? '<span style="font-size:12px;color:#a855f7;display:flex;align-items:center;gap:6px">📦 Almoxarife só pode atualizar a partir de A Caminho</span>' : '<span style="font-size:12px;color:#6b7f96;display:flex;align-items:center;gap:6px">🔒 Apenas compradores podem atualizar o status</span>')
     + (canEdit ? '<button class="btn btn-secondary" onclick="openStatusInfoEditor(\'' + p.sc + '\')">✏️ Editar/Apagar Etapas</button>' : '')
     + (canReceber ? '<button class="btn btn-primary" onclick="openRecebimentoModal(\'' + p.sc + '\')">📦 Registrar Recebimento</button>' : '')
     + (window.compradorMode ? '<button class="btn btn-secondary" onclick="openEditModal(\'' + p.sc + '\')">Editar</button>' : '')
