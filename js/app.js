@@ -5605,3 +5605,163 @@ switchTab = function(name){
   _switchTabV125(name);
   if(name==='config') kvLoadAdminUsers();
 };
+
+// =========================================================
+// v1.2.29 — DEPARTAMENTOS DINÂMICOS + ADMINISTRAÇÃO DE SETOR
+// =========================================================
+window.kvDepartamentos = [];
+window.kvUserDepartment = '';
+
+async function kvRpcWithToken(name, body, accessToken) {
+  const headers = {'Content-Type':'application/json','apikey':SUPA_KEY};
+  headers.Authorization = 'Bearer ' + (accessToken || SUPA_KEY);
+  const res = await fetch(SUPA_URL + '/rest/v1/rpc/' + name, {
+    method:'POST', headers, body:JSON.stringify(body || {})
+  });
+  if (!res.ok) {
+    let msg='HTTP '+res.status;
+    try { const d=await res.json(); msg=d.message||d.details||msg; } catch(e) {}
+    throw new Error(msg);
+  }
+  if (res.status===204) return null;
+  const txt=await res.text();
+  return txt ? JSON.parse(txt) : null;
+}
+
+async function kvLoadDepartamentosCadastro(force) {
+  if (!force && Array.isArray(window.kvDepartamentos) && window.kvDepartamentos.length) return window.kvDepartamentos;
+  try {
+    const data = await kvRpcWithToken('listar_departamentos_cadastro', {}, null);
+    const nomes=(Array.isArray(data)?data:[]).map(x=>kvNormalizeSector(typeof x==='string'?x:x?.nome)).filter(Boolean);
+    window.kvDepartamentos=[...new Set(nomes)].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  } catch(e) {
+    console.warn('Não foi possível carregar departamentos:', e);
+    window.kvDepartamentos=[];
+  }
+  return window.kvDepartamentos;
+}
+
+async function kvPopularSelectDepartamentos(select, selecionado, incluirVazio=true) {
+  if (!select) return;
+  const atual=kvNormalizeSector(selecionado || select.value);
+  const deps=await kvLoadDepartamentosCadastro();
+  if (!deps.length) return;
+  select.innerHTML=(incluirVazio?'<option value="">Selecione...</option>':'') + deps.map(nome=>
+    `<option value="${escapeHTML(nome)}" ${nome===atual?'selected':''}>${escapeHTML(nome)}</option>`
+  ).join('');
+}
+
+const _showSignupViewV129 = showSignupView;
+showSignupView = function() {
+  _showSignupViewV129();
+  kvPopularSelectDepartamentos(document.getElementById('signup-sector'), '', true);
+};
+
+async function kvFetchCurrentDepartment(accessToken) {
+  try {
+    const data=await kvRpcWithToken('departamento_atual', {}, accessToken);
+    return kvNormalizeSector(Array.isArray(data) ? data[0] : data);
+  } catch(e) {
+    console.warn('Falha ao consultar departamento atual:', e);
+    return '';
+  }
+}
+
+kvCurrentSector = function() {
+  if (window.kvAccessRole !== 'solicitante') return '';
+  return kvNormalizeSector(window.kvUserDepartment || window.kvAuthUser?.user_metadata?.departamento || window.kvAuthUser?.user_metadata?.setor || '');
+};
+
+const _kvEnterAuthenticatedUserV129 = kvEnterAuthenticatedUser;
+kvEnterAuthenticatedUser = async function(payload) {
+  if (payload?.access_token) {
+    window.kvUserDepartment = await kvFetchCurrentDepartment(payload.access_token);
+  }
+  await _kvEnterAuthenticatedUserV129(payload);
+  if (window.kvAccessRole === 'solicitante') kvApplySolicitanteIdentity();
+};
+
+const _kvClearSessionV129 = kvClearSession;
+kvClearSession = function() {
+  _kvClearSessionV129();
+  window.kvUserDepartment='';
+};
+
+// A identidade do solicitante usa o departamento oficial do perfil quando disponível.
+const _kvApplySolicitanteIdentityV129 = kvApplySolicitanteIdentity;
+kvApplySolicitanteIdentity = function() {
+  _kvApplySolicitanteIdentityV129();
+  if (window.kvAccessRole !== 'solicitante') return;
+  const setor=kvCurrentSector();
+  const depto=document.getElementById('f-depto');
+  if (depto && setor) {
+    if (![...depto.options].some(o=>o.value===setor)) depto.add(new Option(setor,setor));
+    depto.value=setor;
+    depto.disabled=true;
+  }
+};
+
+async function kvEnsureAdminDepartments() {
+  await kvLoadDepartamentosCadastro(true);
+  return window.kvDepartamentos;
+}
+
+kvRenderAdminUsers = function() {
+  const box=document.getElementById('admin-users-table'); if(!box) return;
+  const rows=Array.isArray(window.kvAdminUsers)?window.kvAdminUsers:[];
+  if(!rows.length){box.innerHTML='<div class="empty-state"><div class="icon">👥</div><h3>Nenhum usuário encontrado</h3><p>Não há contas disponíveis para administração.</p></div>';return;}
+  const profiles=['SOLICITANTE','COMPRADOR','ALMOXARIFE','ADMIN'];
+  const deps=Array.isArray(window.kvDepartamentos)?window.kvDepartamentos:[];
+  box.innerHTML=`<table class="kv-admin-table"><thead><tr><th>Usuário</th><th>Departamento</th><th>Perfil</th><th>Acesso</th><th>Último login</th><th></th></tr></thead><tbody>${rows.map((u,i)=>{
+    const opts=profiles.map(p=>`<option value="${p}" ${String(u.perfil).toUpperCase()===p?'selected':''}>${p}</option>`).join('');
+    const atual=kvNormalizeSector(u.setor||u.departamento||'');
+    const depOpts='<option value="">Selecione...</option>'+deps.map(d=>`<option value="${escapeHTML(d)}" ${d===atual?'selected':''}>${escapeHTML(d)}</option>`).join('');
+    const last=u.ultimo_login?new Date(u.ultimo_login).toLocaleString('pt-BR'):'Nunca';
+    return `<tr data-user-row="${i}"><td><strong>${escapeHTML(u.email||'—')}</strong><small class="kv-admin-created">Cadastrado em ${u.criado_em?new Date(u.criado_em).toLocaleDateString('pt-BR'):'—'}</small></td><td><select class="kv-admin-department" aria-label="Departamento de ${escapeHTML(u.email||'usuário')}">${depOpts}</select></td><td><select class="kv-admin-profile" aria-label="Perfil de ${escapeHTML(u.email||'usuário')}">${opts}</select></td><td><label class="kv-admin-switch"><input class="kv-admin-active" type="checkbox" ${u.ativo!==false?'checked':''}><span>${u.ativo!==false?'Ativo':'Inativo'}</span></label></td><td>${escapeHTML(last)}</td><td><button class="btn btn-primary kv-admin-save" onclick="kvSaveAdminUser(${i},this)">Salvar</button></td></tr>`;
+  }).join('')}</tbody></table>`;
+  box.querySelectorAll('.kv-admin-active').forEach(c=>c.addEventListener('change',()=>{const span=c.parentElement.querySelector('span'); if(span)span.textContent=c.checked?'Ativo':'Inativo';}));
+};
+
+kvLoadAdminUsers = async function() {
+  const section=document.getElementById('admin-users-section');
+  if(!section) return;
+  if(window.kvAccessRole!=='admin'){section.style.display='none';return;}
+  section.style.display='block';
+  const box=document.getElementById('admin-users-table'); if(box)box.innerHTML='<div class="kv-admin-loading">Carregando usuários...</div>';
+  try {
+    await kvEnsureAdminDepartments();
+    const data=await kvAdminRpc('listar_usuarios_admin',{});
+    window.kvAdminUsers=Array.isArray(data)?data:[];
+    kvRenderAdminUsers();
+  } catch(e) {
+    if(box)box.innerHTML='<div class="kv-admin-error">Não foi possível carregar os usuários.<br><small>'+escapeHTML(e.message)+'</small></div>';
+    toast('Erro ao carregar usuários e acessos.','error');
+  }
+};
+
+kvSaveAdminUser = async function(index, btn) {
+  if(window.kvAccessRole!=='admin'){toast('Acesso exclusivo do ADMIN.','error');return;}
+  const u=window.kvAdminUsers[index]; const row=document.querySelector(`[data-user-row="${index}"]`); if(!u||!row)return;
+  const perfil=row.querySelector('.kv-admin-profile')?.value;
+  const ativo=!!row.querySelector('.kv-admin-active')?.checked;
+  const departamento=kvNormalizeSector(row.querySelector('.kv-admin-department')?.value);
+  if (perfil==='SOLICITANTE' && !departamento) { toast('Defina o departamento do solicitante.','error'); return; }
+  const original=btn.textContent; btn.disabled=true; btn.textContent='Salvando...';
+  try {
+    await kvAdminRpc('atualizar_usuario_admin_v2',{p_user_id:u.user_id,p_perfil:perfil,p_ativo:ativo,p_departamento:departamento||null});
+    toast('Acesso de '+(u.email||'usuário')+' atualizado.','success');
+    await kvLoadAdminUsers();
+    const me=(window.kvAuthUser?.email||'').toLowerCase();
+    if((u.email||'').toLowerCase()===me && (perfil!=='ADMIN'||!ativo)) toast('Seu próprio perfil foi alterado. A mudança será aplicada integralmente no próximo login.','info');
+  } catch(e) {
+    toast(e.message || 'Não foi possível atualizar o usuário.','error');
+    btn.disabled=false; btn.textContent=original;
+  }
+};
+
+// Carrega também os departamentos do formulário principal a partir da fonte oficial.
+document.addEventListener('DOMContentLoaded', async ()=>{
+  await kvLoadDepartamentosCadastro();
+  await kvPopularSelectDepartamentos(document.getElementById('signup-sector'), '', true);
+  await kvPopularSelectDepartamentos(document.getElementById('f-depto'), document.getElementById('f-depto')?.value, true);
+});
