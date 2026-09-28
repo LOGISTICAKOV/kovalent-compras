@@ -5816,10 +5816,10 @@ function kvRenderFornecedoresDashboard(rows){
     <div class="kpi-card"><div class="kpi-label">Saving</div><div class="kpi-value" style="font-size:22px">${kvMoney(saving)}</div><div class="kpi-sub">saving registrado</div></div>
     <div class="kpi-card"><div class="kpi-label">Pontualidade</div><div class="kpi-value">${pct===null?'—':kvNum(pct,1)+'%'}</div><div class="kpi-sub">${mens} entrega${mens===1?'':'s'} mensurável${mens===1?'':'is'}</div></div>`;
   if(!rows.length){table.innerHTML='<div class="empty-state"><div class="icon">🏢</div><h3>Sem dados de fornecedores</h3><p>Os indicadores aparecerão quando houver pedidos com fornecedor escolhido.</p></div>';return;}
-  table.innerHTML=`<table class="kv-forn-table"><thead><tr><th>Fornecedor</th><th>Compras</th><th>Valor comprado</th><th>Ticket médio</th><th>Saving</th><th>Pontualidade</th><th>Atraso médio</th><th>Parciais</th><th>Atendimento</th><th>Qualidade</th><th>Flexibilidade</th></tr></thead><tbody>${rows.map(r=>{
+  table.innerHTML=`<table class="kv-forn-table"><thead><tr><th>Fornecedor</th><th>Avaliações</th><th>Compras</th><th>Valor comprado</th><th>Ticket médio</th><th>Saving</th><th>Pontualidade</th><th>Atraso médio</th><th>Parciais</th><th>Atendimento</th><th>Qualidade</th><th>Flexibilidade</th></tr></thead><tbody>${rows.map(r=>{
     const mens=Number(r.entregas_mensuraveis||0), pct=r.percentual_no_prazo;
     const av=Number(r.quantidade_avaliacoes||0);
-    return `<tr><td><span class="kv-forn-name">${escapeHTML(r.fornecedor||'—')}</span><span class="kv-forn-sub">${av} avaliação${av===1?'':'ões'}</span></td><td><span class="kv-forn-metric">${Number(r.quantidade_pedidos||0)}</span></td><td>${kvMoney(r.valor_comprado)}</td><td>${kvMoney(r.ticket_medio)}</td><td>${kvMoney(r.saving_total)}</td><td><span class="${kvPrazoClass(pct)}">${pct===null?'—':kvNum(pct,1)+'%'}</span><span class="kv-forn-sub">${mens} mensurável${mens===1?'':'is'} · ${Number(r.entregas_atrasadas||0)} atraso${Number(r.entregas_atrasadas||0)===1?'':'s'}</span></td><td>${r.atraso_medio_dias===null?'—':kvNum(r.atraso_medio_dias,1)+' dias'}</td><td>${Number(r.recebimentos_parciais||0)}</td><td>${r.media_atendimento===null?'—':kvNum(r.media_atendimento,2)+'/5'}</td><td>${r.media_qualidade===null?'—':kvNum(r.media_qualidade,2)+'/5'}</td><td>${r.media_flexibilidade===null?'—':kvNum(r.media_flexibilidade,2)+'/5'}</td></tr>`;
+    return `<tr><td><span class="kv-forn-name">${escapeHTML(r.fornecedor||'—')}</span></td><td><span class="kv-forn-metric">${av}</span></td><td><span class="kv-forn-metric">${Number(r.quantidade_pedidos||0)}</span></td><td>${kvMoney(r.valor_comprado)}</td><td>${kvMoney(r.ticket_medio)}</td><td>${kvMoney(r.saving_total)}</td><td><span class="${kvPrazoClass(pct)}">${pct===null?'—':kvNum(pct,1)+'%'}</span><span class="kv-forn-sub">${mens} mensurável${mens===1?'':'is'} · ${Number(r.entregas_atrasadas||0)} atraso${Number(r.entregas_atrasadas||0)===1?'':'s'}</span></td><td>${r.atraso_medio_dias===null?'—':kvNum(r.atraso_medio_dias,1)+' dias'}</td><td>${Number(r.recebimentos_parciais||0)}</td><td>${r.media_atendimento===null?'—':kvNum(r.media_atendimento,2)+'/5'}</td><td>${r.media_qualidade===null?'—':kvNum(r.media_qualidade,2)+'/5'}</td><td>${r.media_flexibilidade===null?'—':kvNum(r.media_flexibilidade,2)+'/5'}</td></tr>`;
   }).join('')}</tbody></table>`;
 }
 
@@ -5838,10 +5838,18 @@ async function loadDashboardFornecedores(){
 
 window.kvPedidosAvaliacao = [];
 async function kvLoadPedidosAvaliacao(){
-  const res=await fetch(SUPA_URL+'/rest/v1/pedidos?select=id,sc,fornecedor_esc&fornecedor_esc=not.is.null&order=sc.asc',{headers:kvApiHeaders()});
-  if(!res.ok){let msg='Erro HTTP '+res.status;try{const d=await res.json();msg=d.message||d.details||msg}catch(e){}throw new Error(msg);}
-  const data=await res.json();
-  window.kvPedidosAvaliacao=(Array.isArray(data)?data:[]).filter(p=>String(p.fornecedor_esc||'').trim());
+  // Carrega pedidos e avaliações em paralelo para que um pedido já avaliado
+  // nunca volte a aparecer no seletor. Se a leitura das avaliações falhar,
+  // a lista não é exibida: é mais seguro bloquear do que permitir duplicidade.
+  const [pedidosRes, avaliacoesRes]=await Promise.all([
+    fetch(SUPA_URL+'/rest/v1/pedidos?select=id,sc,fornecedor_esc&fornecedor_esc=not.is.null&order=sc.asc',{headers:kvApiHeaders()}),
+    fetch(SUPA_URL+'/rest/v1/avaliacoes_fornecedores?select=pedido_id&pedido_id=not.is.null',{headers:kvApiHeaders()})
+  ]);
+  if(!pedidosRes.ok){let msg='Erro ao carregar pedidos (HTTP '+pedidosRes.status+')';try{const d=await pedidosRes.json();msg=d.message||d.details||msg}catch(e){}throw new Error(msg);}
+  if(!avaliacoesRes.ok){let msg='Não foi possível verificar os pedidos já avaliados (HTTP '+avaliacoesRes.status+')';try{const d=await avaliacoesRes.json();msg=d.message||d.details||msg}catch(e){}throw new Error(msg);}
+  const [pedidos, avaliacoes]=await Promise.all([pedidosRes.json(),avaliacoesRes.json()]);
+  const avaliados=new Set((Array.isArray(avaliacoes)?avaliacoes:[]).map(a=>String(a.pedido_id||'')).filter(Boolean));
+  window.kvPedidosAvaliacao=(Array.isArray(pedidos)?pedidos:[]).filter(p=>String(p.fornecedor_esc||'').trim()&&!avaliados.has(String(p.id)));
   return window.kvPedidosAvaliacao;
 }
 function kvPedidosAvaliaveis(){ return window.kvPedidosAvaliacao||[]; }
