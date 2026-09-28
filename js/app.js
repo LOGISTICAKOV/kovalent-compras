@@ -3040,6 +3040,7 @@ function addRecebimentoParcialFilters() {
 // override mapper to normalize legacy rows
 function fromDB(r) {
   return normalizePedidoItems({
+    id: r.id,
     sc: r.sc, origem: r.origem, empresa: r.empresa,
     data: r.data, solicitante: r.solicitante,
     departamento: r.departamento, prioridade: r.prioridade,
