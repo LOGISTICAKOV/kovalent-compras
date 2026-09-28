@@ -5982,3 +5982,96 @@ async function loadDashboardSaving(){
     toast(e.message||'Erro ao carregar KPI de Saving.','error');
   }
 }
+
+// =========================================================
+// v1.2.35 — KPI / Dashboard de Frete Nacional
+// =========================================================
+window.kvFretesNacionais = [];
+window.kvFretePedidosRaw = [];
+
+async function kvFreteFetchRows() {
+  const res = await fetch(SUPA_URL + '/rest/v1/fretes_nacionais?select=*&order=data_frete.desc,created_at.desc', {headers:kvApiHeaders()});
+  if (!res.ok) { let m='Erro HTTP '+res.status; try{const d=await res.json();m=d.message||d.details||m}catch(e){} throw new Error(m); }
+  return await res.json();
+}
+
+async function kvFreteRpcDashboard() {
+  const res = await fetch(SUPA_URL + '/rest/v1/rpc/dashboard_frete_nacional', {method:'POST',headers:kvApiHeaders(),body:'{}'});
+  if (!res.ok) { let m='Erro HTTP '+res.status; try{const d=await res.json();m=d.message||d.details||m}catch(e){} throw new Error(m); }
+  const t=await res.text(); return t?JSON.parse(t):{};
+}
+
+function kvFreteNum(v){ const n=Number(v); return Number.isFinite(n)?n:0; }
+function kvFreteDate(v){ if(!v)return '—'; const s=String(v).slice(0,10).split('-'); return s.length===3?`${s[2]}/${s[1]}/${s[0]}`:String(v); }
+function kvFreteMonth(v){ if(!v)return 'Sem data'; const d=String(v).slice(0,7); const [y,m]=d.split('-'); const nomes=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']; return m?`${nomes[Number(m)-1]}/${String(y).slice(-2)}`:d; }
+
+function kvFreteBars(targetId, entries, valueLabel) {
+  const box=document.getElementById(targetId); if(!box)return;
+  if(!entries.length){box.innerHTML='<div class="kv-frete-empty">Ainda não há dados suficientes.</div>';return;}
+  const max=Math.max(1,...entries.map(x=>x.value));
+  box.innerHTML='<div class="kv-frete-bars">'+entries.map(x=>`<div class="kv-frete-bar-row"><div class="kv-frete-bar-top"><strong>${escapeHTML(x.label||'—')}</strong><span>${valueLabel(x.value)}</span></div><div class="kv-frete-track"><i style="width:${Math.max(2,x.value/max*100)}%"></i></div><small>${x.sub||''}</small></div>`).join('')+'</div>';
+}
+
+function renderDashboardFreteNacional(rows, rpcData) {
+  rows=Array.isArray(rows)?rows:[]; window.kvFretesNacionais=rows;
+  const total=rows.reduce((s,r)=>s+kvFreteNum(r.valor_frete),0), qtd=rows.length;
+  const medio=qtd?total/qtd:0, pedidosAtendidos=rows.reduce((s,r)=>s+(Array.isArray(r.pedidos_ids)?r.pedidos_ids.length:0),0);
+  const consolidados=rows.filter(r=>Array.isArray(r.pedidos_ids)&&r.pedidos_ids.length>1).length;
+  const taxa=qtd?consolidados/qtd*100:0;
+  let valorComprado=0; try { valorComprado=kvFreteNum(rpcData?.valor_comprado ?? rpcData?.total_valor_comprado ?? rpcData?.resumo?.valor_comprado); } catch(e){}
+  const pctCompra=valorComprado>0?total/valorComprado*100:null;
+  const grid=document.getElementById('frete-kpi-grid'); if(grid) grid.innerHTML=`
+    <div class="kpi-card"><div class="kpi-label">CUSTO TOTAL</div><div class="kpi-value">${fmtBRL(total)}</div><div class="kpi-sub">frete nacional registrado</div></div>
+    <div class="kpi-card"><div class="kpi-label">FRETES</div><div class="kpi-value">${qtd}</div><div class="kpi-sub">lançamentos realizados</div></div>
+    <div class="kpi-card"><div class="kpi-label">CUSTO MÉDIO</div><div class="kpi-value">${fmtBRL(medio)}</div><div class="kpi-sub">por frete</div></div>
+    <div class="kpi-card"><div class="kpi-label">PEDIDOS ATENDIDOS</div><div class="kpi-value">${pedidosAtendidos}</div><div class="kpi-sub">SCs vinculadas aos fretes</div></div>
+    <div class="kpi-card kv-frete-kpi-highlight"><div class="kpi-label">TAXA DE CONSOLIDAÇÃO</div><div class="kpi-value">${taxa.toFixed(1)}%</div><div class="kpi-sub">${consolidados} frete${consolidados===1?'':'s'} com múltiplos pedidos</div></div>`;
+
+  const byMonth={}; rows.forEach(r=>{const k=String(r.data_frete||'').slice(0,7)||'Sem data';byMonth[k]=(byMonth[k]||0)+kvFreteNum(r.valor_frete)});
+  kvFreteBars('frete-monthly',Object.entries(byMonth).sort((a,b)=>a[0].localeCompare(b[0])).slice(-12).map(([k,v])=>({label:k==='Sem data'?k:kvFreteMonth(k+'-01'),value:v,sub:''})),fmtBRL);
+  const byCarrier={}; rows.forEach(r=>{const k=r.transportadora||'Não informada';byCarrier[k]=(byCarrier[k]||0)+kvFreteNum(r.valor_frete)});
+  kvFreteBars('frete-carriers',Object.entries(byCarrier).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([k,v])=>({label:k,value:v,sub:total?`${(v/total*100).toFixed(1)}% do custo total`:''})),fmtBRL);
+
+  const routes=document.getElementById('frete-routes'); if(routes){
+    const agg={}; rows.forEach(r=>{const key=[r.origem||'—',r.destino||'—',r.empresa||'—'].join('|'); if(!agg[key])agg[key]={origem:r.origem||'—',destino:r.destino||'—',empresa:r.empresa||'—',qtd:0,valor:0};agg[key].qtd++;agg[key].valor+=kvFreteNum(r.valor_frete)});
+    const a=Object.values(agg).sort((x,y)=>y.valor-x.valor);
+    routes.innerHTML=a.length?`<table class="kv-frete-table"><thead><tr><th>Origem</th><th>Destino</th><th>Empresa</th><th>Fretes</th><th>Custo</th></tr></thead><tbody>${a.map(x=>`<tr><td>${escapeHTML(x.origem)}</td><td>${escapeHTML(x.destino)}</td><td>${escapeHTML(x.empresa)}</td><td>${x.qtd}</td><td><strong>${fmtBRL(x.valor)}</strong></td></tr>`).join('')}</tbody></table>`:'<div class="kv-frete-empty">Nenhuma rota registrada ainda.</div>';
+  }
+  const hist=document.getElementById('frete-history'); if(hist) hist.innerHTML=rows.length?`<table class="kv-frete-table"><thead><tr><th>Data</th><th>Transportadora</th><th>Empresa</th><th>Rota</th><th>Tipo</th><th>Pedidos</th><th>Valor</th></tr></thead><tbody>${rows.map(r=>{const n=Array.isArray(r.pedidos_ids)?r.pedidos_ids.length:0;return `<tr><td>${kvFreteDate(r.data_frete)}</td><td><strong>${escapeHTML(r.transportadora||'—')}</strong></td><td>${escapeHTML(r.empresa||'—')}</td><td>${escapeHTML(r.origem||'—')} → ${escapeHTML(r.destino||'—')}</td><td>${escapeHTML(r.tipo_transporte||'—')}</td><td>${n>1?`<span class="kv-frete-consolidado">${n} pedidos</span>`:`<span class="kv-frete-single">${n||'—'}</span>`}</td><td><strong>${fmtBRL(r.valor_frete)}</strong></td></tr>`}).join('')}</tbody></table>`:'<div class="empty-state"><div class="icon">🚚</div><h3>Nenhum frete nacional registrado ainda</h3><p>Registre o primeiro frete para começar a acompanhar os indicadores.</p></div>';
+}
+
+async function loadDashboardFreteNacional(){
+  const grid=document.getElementById('frete-kpi-grid'); if(grid)grid.innerHTML='<div class="kv-frete-empty" style="grid-column:1/-1">Carregando indicadores...</div>';
+  try{ const [rows,rpc]=await Promise.all([kvFreteFetchRows(),kvFreteRpcDashboard().catch(e=>{console.warn('Dashboard frete RPC:',e);return {}})]); renderDashboardFreteNacional(rows,rpc); }
+  catch(e){console.error(e); if(grid)grid.innerHTML=`<div class="kv-admin-error" style="grid-column:1/-1">Não foi possível carregar o KPI de Frete Nacional.<br><small>${escapeHTML(e.message)}</small></div>`;}
+}
+
+async function openFreteNacionalModal(){
+  const modal=document.getElementById('modal-frete-nacional'); if(!modal)return;
+  modal.style.display='flex'; document.getElementById('frete-data').value=new Date().toISOString().slice(0,10);
+  const list=document.getElementById('frete-pedidos-list'); list.innerHTML='<div class="kv-frete-empty">Carregando pedidos...</div>';
+  try{
+    const res=await fetch(SUPA_URL+'/rest/v1/pedidos?select=id,sc,empresa,departamento,fornecedor_esc,status&order=created_at.desc',{headers:kvApiHeaders()});
+    if(!res.ok)throw new Error('Não foi possível carregar os pedidos.');
+    const data=await res.json(); window.kvFretePedidosRaw=data||[];
+    list.innerHTML=data.length?data.map(p=>`<label class="kv-frete-order"><input type="checkbox" value="${escapeHTML(p.id)}"><span><strong>${escapeHTML(p.sc||'Sem SC')}</strong><small>${escapeHTML([p.empresa,p.departamento,p.fornecedor_esc].filter(Boolean).join(' • ')||p.status||'Pedido')}</small></span></label>`).join(''):'<div class="kv-frete-empty">Nenhum pedido disponível.</div>';
+  }catch(e){list.innerHTML='<div class="kv-admin-error">'+escapeHTML(e.message)+'</div>';}
+}
+function closeFreteNacionalModal(){const m=document.getElementById('modal-frete-nacional');if(m)m.style.display='none';}
+
+async function salvarFreteNacional(){
+  const data=document.getElementById('frete-data')?.value, transportadora=document.getElementById('frete-transportadora')?.value.trim(), valor=Number(document.getElementById('frete-valor')?.value||0);
+  const ids=[...document.querySelectorAll('#frete-pedidos-list input:checked')].map(x=>x.value);
+  if(!data||!transportadora||!(valor>0)||!ids.length){toast('Preencha data, transportadora, valor e selecione ao menos um pedido.','error');return;}
+  const body={data_frete:data,transportadora,valor_frete:valor,empresa:document.getElementById('frete-empresa')?.value.trim()||null,origem:document.getElementById('frete-origem')?.value.trim()||null,destino:document.getElementById('frete-destino')?.value.trim()||null,tipo_transporte:document.getElementById('frete-tipo')?.value||null,observacao:document.getElementById('frete-observacao')?.value.trim()||null,pedidos_ids:ids};
+  const btn=document.getElementById('btn-salvar-frete'),old=btn.textContent;btn.disabled=true;btn.textContent='Salvando...';
+  try{
+    const res=await fetch(SUPA_URL+'/rest/v1/fretes_nacionais',{method:'POST',headers:kvApiHeaders('return=representation'),body:JSON.stringify(body)});
+    if(!res.ok){let m='Erro ao salvar frete.';try{const d=await res.json();m=d.message||d.details||m}catch(e){}throw new Error(m)}
+    closeFreteNacionalModal(); ['frete-transportadora','frete-valor','frete-empresa','frete-origem','frete-destino','frete-observacao'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''}); const t=document.getElementById('frete-tipo');if(t)t.value='';
+    toast(ids.length>1?`Frete salvo com ${ids.length} pedidos consolidados.`:'Frete salvo com sucesso.','success'); await loadDashboardFreteNacional();
+  }catch(e){toast(e.message||'Não foi possível salvar o frete.','error')}finally{btn.disabled=false;btn.textContent=old}
+}
+
+const _switchKPIV135=switchKPI;
+switchKPI=function(view){_switchKPIV135(view);if(view==='frete')loadDashboardFreteNacional();};

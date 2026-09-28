@@ -340,7 +340,18 @@
     </div>
 
     <div id="kpi-pane-frete" style="display:none">
-      <div class="empty-state"><div class="icon">🚚</div><h3>KPI de Frete Nacional</h3><p>Estrutura preparada. Este módulo será implementado após o KPI de Saving.</p></div>
+      <div class="kv-frete-head">
+        <div><div class="section-eyebrow">LOGÍSTICA NACIONAL</div><h2>Frete Nacional</h2><p>Custos, consolidação de pedidos, transportadoras e rotas em uma única visão.</p></div>
+        <div class="kv-frete-actions"><button class="btn btn-secondary" onclick="loadDashboardFreteNacional()">🔄 Atualizar</button><button class="btn btn-primary" onclick="openFreteNacionalModal()">➕ Registrar frete</button></div>
+      </div>
+      <div id="frete-kpi-grid" class="kv-summary-grid kv-summary-grid-5"></div>
+      <div class="kv-frete-layout">
+        <div class="card kv-frete-card"><div class="kv-frete-card-title"><div><strong>📅 Evolução mensal</strong><small>Custo de frete registrado ao longo do tempo</small></div></div><div id="frete-monthly"></div></div>
+        <div class="card kv-frete-card"><div class="kv-frete-card-title"><div><strong>🚛 Custo por transportadora</strong><small>Participação das transportadoras no custo total</small></div></div><div id="frete-carriers"></div></div>
+      </div>
+      <div class="card kv-frete-card"><div class="kv-frete-card-title"><div><strong>🧭 Rotas e empresas</strong><small>Origem, destino e empresa vinculada ao frete</small></div></div><div class="data-table-wrap" id="frete-routes"></div></div>
+      <div class="card kv-frete-card"><div class="kv-frete-card-title"><div><strong>🧾 Histórico de fretes</strong><small>Rastreabilidade dos lançamentos e pedidos consolidados</small></div></div><div class="data-table-wrap" id="frete-history"></div></div>
+      <div class="kv-forn-note">ℹ️ Um frete pode atender vários pedidos. O custo é contabilizado uma única vez, evitando duplicidade quando houver consolidação de SCs.</div>
     </div>
     </div><!-- /kv-page-content -->
   </div><!-- /tab-painel -->
@@ -713,7 +724,7 @@
   </div>
 </div>
 
-<script src="js/app.js?v=1.2.33"></script>
+<script src="js/app.js?v=1.2.35"></script>
 
 <div class="modal-overlay" id="modal-avaliacao-fornecedor" style="display:none">
   <div class="modal kv-forn-modal">
@@ -728,6 +739,26 @@
       <div class="form-group"><label>Observação</label><textarea id="aval-observacao" rows="3" placeholder="Ex.: comunicação, tratativa de divergência, qualidade do material..."></textarea></div>
     </div>
     <div class="modal-footer"><button class="btn btn-secondary" onclick="closeAvaliacaoFornecedor()">Cancelar</button><button class="btn btn-primary" id="btn-salvar-avaliacao" onclick="salvarAvaliacaoFornecedor()">Salvar avaliação</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-frete-nacional" style="display:none">
+  <div class="modal kv-frete-modal">
+    <div class="modal-header"><div><h3>🚚 Registrar frete nacional</h3><p>Vincule um ou vários pedidos ao mesmo transporte.</p></div><button class="modal-close" onclick="closeFreteNacionalModal()">×</button></div>
+    <div class="modal-body">
+      <div class="kv-frete-form-grid">
+        <div class="form-group"><label>Data do frete *</label><input type="date" id="frete-data"></div>
+        <div class="form-group"><label>Transportadora *</label><input type="text" id="frete-transportadora" placeholder="Ex.: Jadlog"></div>
+        <div class="form-group"><label>Valor do frete *</label><input type="number" min="0" step="0.01" id="frete-valor" placeholder="0,00"></div>
+        <div class="form-group"><label>Empresa</label><input type="text" id="frete-empresa" placeholder="Ex.: Kovalent"></div>
+        <div class="form-group"><label>Origem</label><input type="text" id="frete-origem" placeholder="Cidade / UF"></div>
+        <div class="form-group"><label>Destino</label><input type="text" id="frete-destino" placeholder="Cidade / UF"></div>
+        <div class="form-group"><label>Tipo de transporte</label><select id="frete-tipo"><option value="">Selecione</option><option>Rodoviário</option><option>Aéreo</option><option>Motoboy</option><option>Correios</option><option>Retirada</option><option>Outro</option></select></div>
+      </div>
+      <div class="form-group"><label>Pedidos atendidos *</label><div id="frete-pedidos-list" class="kv-frete-orders"></div><small>Selecione todos os pedidos transportados neste mesmo frete.</small></div>
+      <div class="form-group"><label>Observação</label><textarea id="frete-observacao" rows="3" placeholder="Informações adicionais sobre o transporte..."></textarea></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="closeFreteNacionalModal()">Cancelar</button><button class="btn btn-primary" id="btn-salvar-frete" onclick="salvarFreteNacional()">Salvar frete</button></div>
   </div>
 </div>
 </body>
