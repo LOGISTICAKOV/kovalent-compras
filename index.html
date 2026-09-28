@@ -319,7 +319,24 @@
     </div><!-- /kpi-pane-fornecedores -->
 
     <div id="kpi-pane-saving" style="display:none">
-      <div class="empty-state"><div class="icon">💰</div><h3>KPI de Saving</h3><p>Estrutura preparada. Este será o próximo módulo de indicadores.</p></div>
+      <div class="kv-saving-head">
+        <div><div class="section-eyebrow">ECONOMIA EM COMPRAS</div><h2>Saving</h2><p>Economia consolidada por pedido, fornecedor, departamento e período.</p></div>
+        <button class="btn btn-secondary" onclick="loadDashboardSaving()">🔄 Atualizar</button>
+      </div>
+      <div id="saving-kpi-grid" class="kv-summary-grid kv-summary-grid-5"></div>
+      <div class="kv-saving-layout">
+        <div class="card kv-saving-card"><div class="kv-saving-card-title"><div><strong>📅 Evolução mensal</strong><small>Saving registrado ao longo do tempo</small></div></div><div id="saving-monthly"></div></div>
+        <div class="card kv-saving-card"><div class="kv-saving-card-title"><div><strong>🏢 Saving por departamento</strong><small>Onde a economia foi gerada</small></div></div><div id="saving-departments"></div></div>
+      </div>
+      <div class="card kv-saving-card">
+        <div class="kv-saving-card-title"><div><strong>🏪 Saving por fornecedor</strong><small>Consolidação dos fornecedores com economia registrada</small></div></div>
+        <div class="data-table-wrap" id="saving-suppliers"></div>
+      </div>
+      <div class="card kv-saving-card">
+        <div class="kv-saving-card-title"><div><strong>🧾 Pedidos com saving</strong><small>Rastreabilidade dos valores que compõem o indicador</small></div></div>
+        <div class="data-table-wrap" id="saving-orders"></div>
+      </div>
+      <div class="kv-forn-note">ℹ️ O painel considera o saving registrado no pedido e, quando disponível, o saving calculado por item. O indicador é consolidado para a operação, sem ranking por comprador.</div>
     </div>
 
     <div id="kpi-pane-frete" style="display:none">

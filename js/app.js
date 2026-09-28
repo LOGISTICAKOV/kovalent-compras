@@ -1590,6 +1590,7 @@ function switchKPI(view) {
   }
   if (view === 'almox') renderKPIAlmox();
   if (view === 'fornecedores') loadDashboardFornecedores();
+  if (view === 'saving') loadDashboardSaving();
 }
 
 function renderKPIAlmox() {
@@ -5884,4 +5885,100 @@ async function salvarAvaliacaoFornecedor(){
     toast('Avaliação do fornecedor salva com sucesso.','success');closeAvaliacaoFornecedor();await loadDashboardFornecedores();
   }catch(e){toast(e.message||'Não foi possível salvar a avaliação.','error');}
   finally{if(btn){btn.disabled=false;btn.textContent=old||'Salvar avaliação';}}
+}
+
+
+// =========================================================
+// v1.2.34 — KPI / DASHBOARD DE SAVING
+// =========================================================
+window.kvSavingDashboard = null;
+
+function kvSavingNumber(v){
+  if(v===null||v===undefined||v==='') return 0;
+  if(typeof v==='number') return Number.isFinite(v)?v:0;
+  const raw=String(v).trim();
+  if(!raw) return 0;
+  const normalized=raw.includes(',') ? raw.replace(/\./g,'').replace(',','.') : raw;
+  const n=Number(normalized); return Number.isFinite(n)?n:0;
+}
+function kvSavingItemValue(item){
+  if(!item||typeof item!=='object') return 0;
+  return kvSavingNumber(item.savingItem ?? item.saving_item ?? item.saving ?? 0);
+}
+function kvSavingOrderValue(p){
+  const itemTotal=(p.itens||[]).reduce((s,i)=>s+kvSavingItemValue(i),0);
+  return itemTotal!==0 ? itemTotal : kvSavingNumber(p.saving ?? p.valor_saving ?? 0);
+}
+function kvSavingDate(p){
+  const raw=p.dataRecebimento||p.data_recebimento||p.dataFinalizado||p.data_finalizado||p.dataPedidoCompra||p.data_pedido_compra||p.created_at||p.data;
+  if(!raw) return null; const d=new Date(raw); return Number.isNaN(d.getTime())?null:d;
+}
+function kvSavingLocalRows(){
+  return (window.pedidos||pedidos||[]).map(p=>({
+    sc:p.sc||'—', fornecedor:p.fornecedorEsc||p.fornecedor_esc||'—', departamento:p.departamento||'Não informado',
+    valor_cotacao:kvSavingNumber(p.valorCotacao??p.valor_cotacao), valor_comprado:kvSavingNumber(p.valorPago??p.valor_pago),
+    saving:kvSavingOrderValue(p), data:kvSavingDate(p)
+  })).filter(r=>r.saving!==0);
+}
+function kvSavingArrayFromPayload(payload, keys){
+  if(!payload||typeof payload!=='object') return [];
+  for(const k of keys) if(Array.isArray(payload[k])) return payload[k];
+  return [];
+}
+function kvSavingNormalizePayload(payload){
+  // A RPC retorna JSONB. O normalizador aceita pequenas variações de nomes
+  // para manter compatibilidade com futuras evoluções do backend.
+  const root=Array.isArray(payload)?{pedidos:payload}:(payload||{});
+  let orders=kvSavingArrayFromPayload(root,['pedidos','orders','detalhes','por_pedido','saving_por_pedido']);
+  if(orders.length){
+    orders=orders.map(r=>({
+      sc:r.sc||r.pedido||'—', fornecedor:r.fornecedor||r.fornecedor_esc||'—', departamento:r.departamento||r.setor||'Não informado',
+      valor_cotacao:kvSavingNumber(r.valor_cotacao??r.cotacao), valor_comprado:kvSavingNumber(r.valor_comprado??r.valor_pago??r.pago),
+      saving:kvSavingNumber(r.saving??r.saving_total??r.valor_saving), data:(()=>{const x=r.data||r.created_at||r.data_pedido_compra; if(!x)return null; const d=new Date(x); return Number.isNaN(d.getTime())?null:d;})()
+    })).filter(r=>r.saving!==0);
+  }
+  if(!orders.length) orders=kvSavingLocalRows();
+  return {root,orders};
+}
+function kvSavingGroup(rows,key){
+  const out={}; rows.forEach(r=>{const k=(r[key]||'Não informado').toString().trim()||'Não informado'; if(!out[k])out[k]={saving:0,valor:0,pedidos:0}; out[k].saving+=r.saving; out[k].valor+=r.valor_comprado; out[k].pedidos++;}); return out;
+}
+function kvSavingMiniBars(entries, emptyText){
+  if(!entries.length) return `<div class="kv-saving-empty">${escapeHTML(emptyText)}</div>`;
+  const max=Math.max(...entries.map(x=>Math.abs(x[1].saving)),1);
+  return `<div class="kv-saving-bars">${entries.map(([name,v])=>`<div class="kv-saving-bar-row"><div class="kv-saving-bar-top"><strong>${escapeHTML(name)}</strong><span>${kvMoney(v.saving)}</span></div><div class="kv-saving-track"><i style="width:${Math.max(2,Math.abs(v.saving)/max*100)}%"></i></div><small>${v.pedidos} pedido${v.pedidos===1?'':'s'}</small></div>`).join('')}</div>`;
+}
+function kvRenderSavingDashboard(payload){
+  const {root,orders}=kvSavingNormalizePayload(payload);
+  const total=orders.reduce((s,r)=>s+r.saving,0), comprado=orders.reduce((s,r)=>s+r.valor_comprado,0), cotacao=orders.reduce((s,r)=>s+r.valor_cotacao,0);
+  const pct=cotacao?total/cotacao*100:0, ticket=orders.length?total/orders.length:0;
+  const grid=document.getElementById('saving-kpi-grid');
+  if(grid) grid.innerHTML=`
+    <div class="kpi-card"><div class="kpi-label">Saving total</div><div class="kpi-value" style="font-size:22px">${kvMoney(total)}</div><div class="kpi-sub">economia registrada</div></div>
+    <div class="kpi-card"><div class="kpi-label">Pedidos com saving</div><div class="kpi-value">${orders.length}</div><div class="kpi-sub">pedidos que compõem o indicador</div></div>
+    <div class="kpi-card"><div class="kpi-label">Saving %</div><div class="kpi-value">${cotacao?kvNum(pct,1)+'%':'—'}</div><div class="kpi-sub">sobre a cotação registrada</div></div>
+    <div class="kpi-card"><div class="kpi-label">Saving médio</div><div class="kpi-value" style="font-size:22px">${orders.length?kvMoney(ticket):'—'}</div><div class="kpi-sub">por pedido com economia</div></div>
+    <div class="kpi-card"><div class="kpi-label">Valor comprado</div><div class="kpi-value" style="font-size:22px">${kvMoney(comprado)}</div><div class="kpi-sub">nos pedidos com saving</div></div>`;
+
+  const dept=Object.entries(kvSavingGroup(orders,'departamento')).sort((a,b)=>b[1].saving-a[1].saving);
+  const deptEl=document.getElementById('saving-departments'); if(deptEl)deptEl.innerHTML=kvSavingMiniBars(dept,'Ainda não há saving por departamento.');
+  const supp=Object.entries(kvSavingGroup(orders,'fornecedor')).sort((a,b)=>b[1].saving-a[1].saving);
+  const suppEl=document.getElementById('saving-suppliers'); if(suppEl)suppEl.innerHTML=supp.length?`<table class="kv-forn-table kv-saving-table"><thead><tr><th>Fornecedor</th><th>Pedidos</th><th>Valor comprado</th><th>Saving</th><th>Participação</th></tr></thead><tbody>${supp.map(([n,v])=>`<tr><td><span class="kv-forn-name">${escapeHTML(n)}</span></td><td>${v.pedidos}</td><td>${kvMoney(v.valor)}</td><td><strong class="kv-saving-positive">${kvMoney(v.saving)}</strong></td><td>${total?kvNum(v.saving/total*100,1)+'%':'—'}</td></tr>`).join('')}</tbody></table>`:'<div class="kv-saving-empty">Nenhum fornecedor com saving registrado.</div>';
+
+  const months={}; orders.forEach(r=>{if(!r.data)return;const k=`${r.data.getFullYear()}-${String(r.data.getMonth()+1).padStart(2,'0')}`;if(!months[k])months[k]={saving:0,pedidos:0};months[k].saving+=r.saving;months[k].pedidos++;});
+  const monthly=Object.entries(months).sort((a,b)=>a[0].localeCompare(b[0])).slice(-12).map(([k,v])=>{const [y,m]=k.split('-');return [new Date(+y,+m-1,1).toLocaleDateString('pt-BR',{month:'short',year:'2-digit'}),v]});
+  const monthEl=document.getElementById('saving-monthly'); if(monthEl)monthEl.innerHTML=kvSavingMiniBars(monthly,'Ainda não há datas suficientes para a evolução mensal.');
+
+  const orderEl=document.getElementById('saving-orders'); if(orderEl)orderEl.innerHTML=orders.length?`<table class="kv-forn-table kv-saving-table"><thead><tr><th>SC</th><th>Fornecedor</th><th>Departamento</th><th>Cotação</th><th>Valor comprado</th><th>Saving</th><th>Saving %</th></tr></thead><tbody>${orders.slice().sort((a,b)=>b.saving-a.saving).map(r=>`<tr><td><strong>${escapeHTML(r.sc)}</strong></td><td>${escapeHTML(r.fornecedor)}</td><td>${escapeHTML(r.departamento)}</td><td>${r.valor_cotacao?kvMoney(r.valor_cotacao):'—'}</td><td>${r.valor_comprado?kvMoney(r.valor_comprado):'—'}</td><td><strong class="kv-saving-positive">${kvMoney(r.saving)}</strong></td><td>${r.valor_cotacao?kvNum(r.saving/r.valor_cotacao*100,1)+'%':'—'}</td></tr>`).join('')}</tbody></table>`:'<div class="empty-state"><div class="icon">💰</div><h3>Sem saving registrado</h3><p>Quando houver economia registrada nos pedidos, os indicadores aparecerão aqui.</p></div>';
+}
+async function loadDashboardSaving(){
+  const grid=document.getElementById('saving-kpi-grid'); if(grid)grid.innerHTML='<div class="kv-admin-loading" style="grid-column:1/-1">Carregando indicadores de saving...</div>';
+  try{
+    const data=await kvAdminRpc('dashboard_saving',{});
+    window.kvSavingDashboard=data;
+    kvRenderSavingDashboard(data);
+  }catch(e){
+    if(grid)grid.innerHTML=`<div class="kv-admin-error" style="grid-column:1/-1">Não foi possível carregar o KPI de Saving.<br><small>${escapeHTML(e.message||'Erro desconhecido')}</small></div>`;
+    toast(e.message||'Erro ao carregar KPI de Saving.','error');
+  }
 }
