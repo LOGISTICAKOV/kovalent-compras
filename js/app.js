@@ -5838,18 +5838,15 @@ async function loadDashboardFornecedores(){
 
 window.kvPedidosAvaliacao = [];
 async function kvLoadPedidosAvaliacao(){
-  // Carrega pedidos e avaliações em paralelo para que um pedido já avaliado
-  // nunca volte a aparecer no seletor. Se a leitura das avaliações falhar,
-  // a lista não é exibida: é mais seguro bloquear do que permitir duplicidade.
-  const [pedidosRes, avaliacoesRes]=await Promise.all([
-    fetch(SUPA_URL+'/rest/v1/pedidos?select=id,sc,fornecedor_esc&fornecedor_esc=not.is.null&order=sc.asc',{headers:kvApiHeaders()}),
-    fetch(SUPA_URL+'/rest/v1/avaliacoes_fornecedores?select=pedido_id&pedido_id=not.is.null',{headers:kvApiHeaders()})
-  ]);
-  if(!pedidosRes.ok){let msg='Erro ao carregar pedidos (HTTP '+pedidosRes.status+')';try{const d=await pedidosRes.json();msg=d.message||d.details||msg}catch(e){}throw new Error(msg);}
-  if(!avaliacoesRes.ok){let msg='Não foi possível verificar os pedidos já avaliados (HTTP '+avaliacoesRes.status+')';try{const d=await avaliacoesRes.json();msg=d.message||d.details||msg}catch(e){}throw new Error(msg);}
-  const [pedidos, avaliacoes]=await Promise.all([pedidosRes.json(),avaliacoesRes.json()]);
-  const avaliados=new Set((Array.isArray(avaliacoes)?avaliacoes:[]).map(a=>String(a.pedido_id||'')).filter(Boolean));
-  window.kvPedidosAvaliacao=(Array.isArray(pedidos)?pedidos:[]).filter(p=>String(p.fornecedor_esc||'').trim()&&!avaliados.has(String(p.id)));
+  // v1.2.33: a lista vem de uma RPC SECURITY DEFINER que retorna SOMENTE
+  // pedidos ainda não avaliados. A leitura direta da tabela de avaliações
+  // pode ser bloqueada pelo RLS e, nesse caso, fazia pedidos avaliados reaparecerem.
+  const data=await kvFornecedorRpc('listar_pedidos_avaliacao',{});
+  window.kvPedidosAvaliacao=(Array.isArray(data)?data:[]).map(p=>({
+    id:p.id||p.pedido_id,
+    sc:p.sc,
+    fornecedor_esc:p.fornecedor_esc||p.fornecedor
+  })).filter(p=>p.id&&String(p.fornecedor_esc||'').trim());
   return window.kvPedidosAvaliacao;
 }
 function kvPedidosAvaliaveis(){ return window.kvPedidosAvaliacao||[]; }
@@ -5882,6 +5879,8 @@ async function salvarAvaliacaoFornecedor(){
   const btn=document.getElementById('btn-salvar-avaliacao'); const old=btn?.textContent;if(btn){btn.disabled=true;btn.textContent='Salvando...';}
   try{
     await kvFornecedorRpc('salvar_avaliacao_fornecedor',{p_fornecedor:p.fornecedorEsc||p.fornecedor_esc||'',p_pedido_id:pedidoId,p_atendimento:atendimento,p_qualidade_conformidade:qualidade,p_flexibilidade_comercial:flexRaw?Number(flexRaw):null,p_observacao:obs||null});
+    // Remove imediatamente da memória para impedir nova seleção na mesma sessão.
+    window.kvPedidosAvaliacao=(window.kvPedidosAvaliacao||[]).filter(x=>String(x.id)!==String(pedidoId));
     toast('Avaliação do fornecedor salva com sucesso.','success');closeAvaliacaoFornecedor();await loadDashboardFornecedores();
   }catch(e){toast(e.message||'Não foi possível salvar a avaliação.','error');}
   finally{if(btn){btn.disabled=false;btn.textContent=old||'Salvar avaliação';}}
