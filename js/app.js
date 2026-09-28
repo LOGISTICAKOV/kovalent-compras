@@ -3196,7 +3196,7 @@ function openModal(sc) {
 
     <div class="kv-anexos-summary">
       <div><strong>📎 Central de Anexos</strong><small>PDFs, imagens, planilhas, cotações, propostas, NF e demais documentos deste pedido.</small></div>
-      <button class="btn btn-secondary" onclick="openAnexosPedido('${p.sc}')">📎 Ver / Anexar</button>
+      <button class="btn btn-secondary" onclick="openAnexosPedido('${p.sc}','${p.id||''}')">📎 Ver / Anexar</button>
     </div>
 
     ${p.justificativa ? `<div style="margin-top:20px; background:var(--surface2); border-radius:10px; padding:14px"><div style="font-size:11px; color:var(--muted); margin-bottom:6px">JUSTIFICATIVA</div><div style="font-size:13px">${escapeHTML(p.justificativa)}</div></div>` : ''}
@@ -6090,6 +6090,11 @@ const KV_ANEXOS_BUCKET = 'anexos-pedidos';
 const KV_ANEXOS_CATEGORIAS = ['Cotação','Proposta','Pedido de Compra','Nota Fiscal','Comprovante','Documento Técnico','Planilha','Imagem','Outros'];
 
 function kvAnexoPedidoBySc(sc){ return pedidos.find(p => p.sc === sc) || null; }
+function kvAnexoResolverPedido(sc,pedidoId){
+  return (pedidoId ? pedidos.find(p => String(p.id) === String(pedidoId)) : null)
+    || kvAnexoPedidoBySc(sc)
+    || (window.kvAnexoPedidoAtivo && (window.kvAnexoPedidoAtivo.sc === sc || String(window.kvAnexoPedidoAtivo.id) === String(pedidoId)) ? window.kvAnexoPedidoAtivo : null);
+}
 function kvAnexoFmtBytes(bytes){ const n=Number(bytes||0); if(!n)return '—'; if(n<1024)return n+' B'; if(n<1048576)return (n/1024).toFixed(1)+' KB'; return (n/1048576).toFixed(1)+' MB'; }
 function kvAnexoFmtDate(v){ if(!v)return '—'; try{return new Date(v).toLocaleString('pt-BR');}catch(e){return String(v);} }
 function kvAnexoSafeName(name){ return String(name||'arquivo').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9._-]+/g,'_').replace(/_+/g,'_').slice(-140); }
@@ -6103,8 +6108,9 @@ async function kvAnexoFetchRows(pedidoId){
   return await res.json();
 }
 
-async function openAnexosPedido(sc){
-  const p=kvAnexoPedidoBySc(sc); if(!p||!p.id){toast('Não foi possível identificar o pedido para carregar os anexos.','error');return;}
+async function openAnexosPedido(sc,pedidoId){
+  const p=kvAnexoResolverPedido(sc,pedidoId); if(!p||!p.id){toast('Não foi possível identificar o pedido para carregar os anexos.','error');return;}
+  window.kvAnexoPedidoAtivo=p;
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-header"><div><div style="font-family:Inter,sans-serif;font-size:20px;font-weight:700">📎 Central de Anexos</div><div style="font-size:13px;color:var(--muted);margin-top:4px">${escapeHTML(p.sc)} · ${escapeHTML(p.departamento||'—')}</div></div><button class="modal-close" onclick="openModal('${p.sc}')">✕</button></div>
     <div class="kv-anexos-upload">
@@ -6113,16 +6119,16 @@ async function openAnexosPedido(sc){
         <div class="form-group"><label>Arquivo *</label><input id="anexo-arquivo" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.xlsx,.xls"></div>
       </div>
       <div class="form-group"><label>Observação</label><input id="anexo-observacao" type="text" maxlength="300" placeholder="Ex.: Cotação aprovada, NF referente à entrega parcial..."></div>
-      <div class="kv-anexos-upload-actions"><small>Máximo de 20 MB por arquivo.</small><button id="btn-upload-anexo" class="btn btn-primary" onclick="salvarAnexoPedido('${p.sc}')">⬆ Enviar anexo</button></div>
+      <div class="kv-anexos-upload-actions"><small>Máximo de 20 MB por arquivo.</small><button id="btn-upload-anexo" class="btn btn-primary" onclick="salvarAnexoPedido('${p.sc}','${p.id}')">⬆ Enviar anexo</button></div>
     </div>
     <div id="anexos-lista"><div class="kv-anexos-loading">Carregando anexos...</div></div>
     <div style="margin-top:18px;text-align:right"><button class="btn btn-secondary" onclick="openModal('${p.sc}')">Voltar ao pedido</button></div>`;
   document.getElementById('modal-overlay').classList.add('open');
-  await renderAnexosPedido(sc);
+  await renderAnexosPedido(sc,p.id);
 }
 
-async function renderAnexosPedido(sc){
-  const p=kvAnexoPedidoBySc(sc), box=document.getElementById('anexos-lista'); if(!p||!box)return;
+async function renderAnexosPedido(sc,pedidoId){
+  const p=kvAnexoResolverPedido(sc,pedidoId), box=document.getElementById('anexos-lista'); if(!p||!box)return;
   try{
     const rows=await kvAnexoFetchRows(p.id);
     if(!rows.length){box.innerHTML='<div class="kv-anexos-empty"><div>📂</div><strong>Nenhum anexo neste pedido</strong><span>Envie o primeiro documento usando o formulário acima.</span></div>';return;}
@@ -6135,8 +6141,8 @@ async function renderAnexosPedido(sc){
   }catch(e){box.innerHTML='<div class="kv-admin-error">'+escapeHTML(e.message)+'</div>';}
 }
 
-async function salvarAnexoPedido(sc){
-  const p=kvAnexoPedidoBySc(sc), input=document.getElementById('anexo-arquivo'), file=input?.files?.[0];
+async function salvarAnexoPedido(sc,pedidoId){
+  const p=kvAnexoResolverPedido(sc,pedidoId), input=document.getElementById('anexo-arquivo'), file=input?.files?.[0];
   if(!p||!p.id){toast('Pedido inválido.','error');return;} if(!file){toast('Selecione um arquivo.','error');return;} if(file.size>20*1024*1024){toast('O arquivo excede o limite de 20 MB.','error');return;}
   const categoria=document.getElementById('anexo-categoria')?.value||'Outros', obs=document.getElementById('anexo-observacao')?.value.trim()||null;
   const caminho=p.id+'/'+kvAnexoUUID()+'_'+kvAnexoSafeName(file.name), btn=document.getElementById('btn-upload-anexo'), old=btn.textContent; btn.disabled=true;btn.textContent='Enviando...';
@@ -6147,7 +6153,7 @@ async function salvarAnexoPedido(sc){
     const body={pedido_id:p.id,categoria,nome_arquivo:file.name,caminho_storage:caminho,tipo_mime:file.type||null,tamanho_bytes:file.size,observacao:obs,criado_por:kvGetAuthenticatedUserId()||null};
     const db=await fetch(SUPA_URL+'/rest/v1/anexos_pedidos',{method:'POST',headers:kvApiHeaders('return=representation'),body:JSON.stringify(body)});
     if(!db.ok){ await fetch(SUPA_URL+'/storage/v1/object/'+KV_ANEXOS_BUCKET+'/'+caminho,{method:'DELETE',headers:kvApiHeaders()}).catch(()=>{}); let m='Arquivo enviado, mas não foi possível registrar o anexo.';try{const d=await db.json();m=d.message||d.details||m}catch(e){}throw new Error(m)}
-    input.value=''; const o=document.getElementById('anexo-observacao');if(o)o.value=''; toast('Anexo enviado com sucesso.','success'); await renderAnexosPedido(sc);
+    input.value=''; const o=document.getElementById('anexo-observacao');if(o)o.value=''; toast('Anexo enviado com sucesso.','success'); await renderAnexosPedido(sc,p.id);
   }catch(e){toast(e.message||'Não foi possível enviar o anexo.','error');}finally{btn.disabled=false;btn.textContent=old;}
 }
 
@@ -6186,7 +6192,7 @@ async function excluirAnexoPedido(sc,id,caminhoEncoded,nomeEncoded){
     bloco.className = 'kv-anexos-summary';
     bloco.innerHTML = '<div><strong>📎 Central de Anexos</strong><small>PDFs, imagens, planilhas, cotações, propostas, NF e demais documentos deste pedido.</small></div>'
       + '<button class="btn btn-secondary" type="button">📎 Ver / Anexar</button>';
-    bloco.querySelector('button').addEventListener('click', function(){ openAnexosPedido(sc); });
+    bloco.querySelector('button').addEventListener('click', function(){ openAnexosPedido(sc, p.id); });
 
     // Coloca imediatamente antes da faixa final de ações quando possível.
     const actionRows = Array.from(content.children).filter(el => {
