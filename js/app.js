@@ -6168,3 +6168,33 @@ async function excluirAnexoPedido(sc,id,caminhoEncoded,nomeEncoded){
     toast('Anexo excluído.','success'); await renderAnexosPedido(sc);
   }catch(e){toast(e.message||'Erro ao excluir anexo.','error');}
 }
+
+// v1.2.36b — garante a exibição da Central de Anexos no modal ativo do pedido.
+// O app possui wrappers sucessivos de openModal; esta camada final injeta o bloco
+// depois que qualquer versão anterior terminar de renderizar, evitando depender
+// de qual renderer foi capturado por wrappers de acesso/perfil.
+(function(){
+  const _kvOpenModalComAnexosBase = openModal;
+  openModal = function(sc){
+    const result = _kvOpenModalComAnexosBase(sc);
+    const p = pedidos.find(x => x.sc === sc);
+    const content = document.getElementById('modal-content');
+    if (!p || !content || !document.getElementById('modal-overlay')?.classList.contains('open')) return result;
+    if (content.querySelector('.kv-anexos-summary')) return result;
+
+    const bloco = document.createElement('div');
+    bloco.className = 'kv-anexos-summary';
+    bloco.innerHTML = '<div><strong>📎 Central de Anexos</strong><small>PDFs, imagens, planilhas, cotações, propostas, NF e demais documentos deste pedido.</small></div>'
+      + '<button class="btn btn-secondary" type="button">📎 Ver / Anexar</button>';
+    bloco.querySelector('button').addEventListener('click', function(){ openAnexosPedido(sc); });
+
+    // Coloca imediatamente antes da faixa final de ações quando possível.
+    const actionRows = Array.from(content.children).filter(el => {
+      const s = el.getAttribute && el.getAttribute('style');
+      return s && s.includes('display:flex') && s.includes('flex-wrap:wrap');
+    });
+    const actions = actionRows.length ? actionRows[actionRows.length - 1] : null;
+    if (actions) content.insertBefore(bloco, actions); else content.appendChild(bloco);
+    return result;
+  };
+})();
