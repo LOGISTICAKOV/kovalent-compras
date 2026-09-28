@@ -5765,3 +5765,116 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   await kvPopularSelectDepartamentos(document.getElementById('signup-sector'), '', true);
   await kvPopularSelectDepartamentos(document.getElementById('f-depto'), document.getElementById('f-depto')?.value, true);
 });
+
+// =========================================================
+// v1.2.30 — KPI / DASHBOARD DE FORNECEDORES
+// =========================================================
+window.kvFornecedoresDashboard = [];
+
+async function kvFornecedorRpc(name, body) {
+  return kvAdminRpc(name, body || {});
+}
+
+function kvMoney(v){
+  const n=Number(v||0);
+  return n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+}
+function kvNum(v,d=1){
+  if(v===null||v===undefined||v==='') return '—';
+  return Number(v).toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d});
+}
+function kvPrazoClass(v){
+  if(v===null||v===undefined) return 'kv-forn-muted';
+  const n=Number(v); return n>=90?'kv-forn-good':n>=75?'kv-forn-warn':'kv-forn-bad';
+}
+function kvRenderFornecedoresDashboard(rows){
+  const grid=document.getElementById('forn-kpi-grid');
+  const table=document.getElementById('forn-dashboard-table');
+  if(!grid||!table) return;
+  const totalFornecedores=rows.length;
+  const totalPedidos=rows.reduce((s,r)=>s+Number(r.quantidade_pedidos||0),0);
+  const valor=rows.reduce((s,r)=>s+Number(r.valor_comprado||0),0);
+  const saving=rows.reduce((s,r)=>s+Number(r.saving_total||0),0);
+  const mens=rows.reduce((s,r)=>s+Number(r.entregas_mensuraveis||0),0);
+  const prazo=rows.reduce((s,r)=>s+Number(r.entregas_no_prazo||0),0);
+  const pct=mens?prazo/mens*100:null;
+  grid.innerHTML=`
+    <div class="kpi-card"><div class="kpi-label">Fornecedores</div><div class="kpi-value">${totalFornecedores}</div><div class="kpi-sub">com histórico de compras</div></div>
+    <div class="kpi-card"><div class="kpi-label">Pedidos</div><div class="kpi-value">${totalPedidos}</div><div class="kpi-sub">pedidos com fornecedor</div></div>
+    <div class="kpi-card"><div class="kpi-label">Valor comprado</div><div class="kpi-value" style="font-size:22px">${kvMoney(valor)}</div><div class="kpi-sub">base registrada</div></div>
+    <div class="kpi-card"><div class="kpi-label">Saving</div><div class="kpi-value" style="font-size:22px">${kvMoney(saving)}</div><div class="kpi-sub">saving registrado</div></div>
+    <div class="kpi-card"><div class="kpi-label">Pontualidade</div><div class="kpi-value">${pct===null?'—':kvNum(pct,1)+'%'}</div><div class="kpi-sub">${mens} entrega${mens===1?'':'s'} mensurável${mens===1?'':'is'}</div></div>`;
+  if(!rows.length){table.innerHTML='<div class="empty-state"><div class="icon">🏢</div><h3>Sem dados de fornecedores</h3><p>Os indicadores aparecerão quando houver pedidos com fornecedor escolhido.</p></div>';return;}
+  table.innerHTML=`<table class="kv-forn-table"><thead><tr><th>Fornecedor</th><th>Compras</th><th>Valor comprado</th><th>Ticket médio</th><th>Saving</th><th>Pontualidade</th><th>Atraso médio</th><th>Parciais</th><th>Atendimento</th><th>Qualidade</th><th>Flexibilidade</th></tr></thead><tbody>${rows.map(r=>{
+    const mens=Number(r.entregas_mensuraveis||0), pct=r.percentual_no_prazo;
+    const av=Number(r.quantidade_avaliacoes||0);
+    return `<tr><td><span class="kv-forn-name">${escapeHTML(r.fornecedor||'—')}</span><span class="kv-forn-sub">${av} avaliação${av===1?'':'ões'}</span></td><td><span class="kv-forn-metric">${Number(r.quantidade_pedidos||0)}</span></td><td>${kvMoney(r.valor_comprado)}</td><td>${kvMoney(r.ticket_medio)}</td><td>${kvMoney(r.saving_total)}</td><td><span class="${kvPrazoClass(pct)}">${pct===null?'—':kvNum(pct,1)+'%'}</span><span class="kv-forn-sub">${mens} mensurável${mens===1?'':'is'} · ${Number(r.entregas_atrasadas||0)} atraso${Number(r.entregas_atrasadas||0)===1?'':'s'}</span></td><td>${r.atraso_medio_dias===null?'—':kvNum(r.atraso_medio_dias,1)+' dias'}</td><td>${Number(r.recebimentos_parciais||0)}</td><td>${r.media_atendimento===null?'—':kvNum(r.media_atendimento,2)+'/5'}</td><td>${r.media_qualidade===null?'—':kvNum(r.media_qualidade,2)+'/5'}</td><td>${r.media_flexibilidade===null?'—':kvNum(r.media_flexibilidade,2)+'/5'}</td></tr>`;
+  }).join('')}</tbody></table>`;
+}
+
+async function loadDashboardFornecedores(){
+  const table=document.getElementById('forn-dashboard-table');
+  if(table)table.innerHTML='<div class="kv-admin-loading">Carregando indicadores...</div>';
+  try{
+    const data=await kvFornecedorRpc('dashboard_fornecedores',{});
+    window.kvFornecedoresDashboard=Array.isArray(data)?data:[];
+    kvRenderFornecedoresDashboard(window.kvFornecedoresDashboard);
+  }catch(e){
+    if(table)table.innerHTML='<div class="kv-admin-error">Não foi possível carregar os indicadores.<br><small>'+escapeHTML(e.message||'Erro desconhecido')+'</small></div>';
+    toast(e.message||'Erro ao carregar fornecedores.','error');
+  }
+}
+
+window.kvPedidosAvaliacao = [];
+async function kvLoadPedidosAvaliacao(){
+  const res=await fetch(SUPA_URL+'/rest/v1/pedidos?select=id,sc,fornecedor_esc&fornecedor_esc=not.is.null&order=sc.asc',{headers:kvApiHeaders()});
+  if(!res.ok){let msg='Erro HTTP '+res.status;try{const d=await res.json();msg=d.message||d.details||msg}catch(e){}throw new Error(msg);}
+  const data=await res.json();
+  window.kvPedidosAvaliacao=(Array.isArray(data)?data:[]).filter(p=>String(p.fornecedor_esc||'').trim());
+  return window.kvPedidosAvaliacao;
+}
+function kvPedidosAvaliaveis(){ return window.kvPedidosAvaliacao||[]; }
+async function openAvaliacaoFornecedor(){
+  if(!(window.kvAccessRole==='admin'||window.kvAccessRole==='comprador'||window.kvAccessRole==='almoxarife'||window.compradorMode||window.almoxarifeMode)){toast('Seu perfil não possui permissão para avaliar fornecedores.','error');return;}
+  const sel=document.getElementById('aval-pedido'); if(!sel)return;
+  sel.innerHTML='<option value="">Carregando pedidos...</option>';
+  document.getElementById('modal-avaliacao-fornecedor').style.display='flex';
+  let lista=[]; try{lista=await kvLoadPedidosAvaliacao();}catch(e){toast(e.message||'Erro ao carregar pedidos.','error');closeAvaliacaoFornecedor();return;}
+  sel.innerHTML='<option value="">Selecione um pedido</option>'+lista.map(p=>{const f=p.fornecedor_esc||p.fornecedorEsc||'';return `<option value="${escapeHTML(p.id||'')}">${escapeHTML(p.sc||'Pedido')} — ${escapeHTML(f)}</option>`}).join('');
+  ['aval-atendimento','aval-qualidade','aval-flexibilidade'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  const obs=document.getElementById('aval-observacao');if(obs)obs.value='';
+  kvSyncFornecedorAvaliacao();
+}
+function closeAvaliacaoFornecedor(){const m=document.getElementById('modal-avaliacao-fornecedor');if(m)m.style.display='none';}
+function kvSyncFornecedorAvaliacao(){
+  const id=document.getElementById('aval-pedido')?.value;
+  const p=kvPedidosAvaliaveis().find(x=>String(x.id)===String(id));
+  const lab=document.getElementById('aval-fornecedor-label'); if(lab)lab.textContent=p?'Fornecedor: '+(p.fornecedorEsc||p.fornecedor_esc||'—'):'Selecione o pedido que deseja avaliar.';
+}
+async function salvarAvaliacaoFornecedor(){
+  const pedidoId=document.getElementById('aval-pedido')?.value;
+  const p=kvPedidosAvaliaveis().find(x=>String(x.id)===String(pedidoId));
+  const atendimento=Number(document.getElementById('aval-atendimento')?.value||0);
+  const qualidade=Number(document.getElementById('aval-qualidade')?.value||0);
+  const flexRaw=document.getElementById('aval-flexibilidade')?.value;
+  const obs=document.getElementById('aval-observacao')?.value||'';
+  if(!p||!pedidoId){toast('Selecione um pedido.','error');return;}
+  if(atendimento<1||qualidade<1){toast('Informe Atendimento e Qualidade/Conformidade.','error');return;}
+  const btn=document.getElementById('btn-salvar-avaliacao'); const old=btn?.textContent;if(btn){btn.disabled=true;btn.textContent='Salvando...';}
+  try{
+    await kvFornecedorRpc('salvar_avaliacao_fornecedor',{p_fornecedor:p.fornecedorEsc||p.fornecedor_esc||'',p_pedido_id:pedidoId,p_atendimento:atendimento,p_qualidade_conformidade:qualidade,p_flexibilidade_comercial:flexRaw?Number(flexRaw):null,p_observacao:obs||null});
+    toast('Avaliação do fornecedor salva com sucesso.','success');closeAvaliacaoFornecedor();await loadDashboardFornecedores();
+  }catch(e){toast(e.message||'Não foi possível salvar a avaliação.','error');}
+  finally{if(btn){btn.disabled=false;btn.textContent=old||'Salvar avaliação';}}
+}
+
+const _switchKPIV130 = switchKPI;
+switchKPI = function(view){
+  if(view!=='fornecedores') return _switchKPIV130(view);
+  window._kpiView='fornecedores';
+  ['compras','almox','fornecedores'].forEach(v=>{const pane=document.getElementById('kpi-pane-'+v);if(pane)pane.style.display=v===view?'block':'none';});
+  ['compras','almox','fornecedores'].forEach(v=>{const b=document.getElementById('btn-kpi-'+v);if(b)b.classList.toggle('active',v===view);});
+  const title=document.getElementById('painel-title');if(title)title.textContent='Indicadores — Fornecedores';
+  const sub=document.getElementById('painel-sub');if(sub)sub.textContent='Desempenho comercial, operacional e qualitativo dos fornecedores.';
+  loadDashboardFornecedores();
+};

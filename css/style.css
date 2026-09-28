@@ -812,3 +812,11 @@ body:not(.auth-locked) #tab-programadas>.page-title,body:not(.auth-locked) #tab-
 .kv-admin-loading,.kv-admin-error{padding:32px;text-align:center;color:#6b7f96;font-size:13px}
 .kv-admin-error{color:#b91c1c}
 @media(max-width:760px){.kv-admin-users-head{flex-direction:column}.kv-admin-users-head .btn{width:100%}}
+
+/* v1.2.30 — KPI / Dashboard de Fornecedores */
+.kpi-tab-btn:disabled{opacity:.48;cursor:not-allowed;filter:grayscale(.2)}
+.kv-forn-card{margin-top:18px}.kv-forn-note{margin-top:14px;padding:12px 14px;border:1px solid #cfe2ec;border-radius:10px;background:#f4faff;color:#557086;font-size:12px}
+.kv-forn-table{min-width:1120px}.kv-forn-table th{white-space:nowrap}.kv-forn-table td{vertical-align:middle}.kv-forn-name{font-weight:800;color:#123f60}.kv-forn-sub{display:block;margin-top:3px;font-size:10px;color:#8797aa}
+.kv-forn-metric{font-weight:700;color:#173955}.kv-forn-muted{color:#8797aa;font-size:11px}.kv-forn-good{color:#15803d;font-weight:800}.kv-forn-warn{color:#b45309;font-weight:800}.kv-forn-bad{color:#b91c1c;font-weight:800}
+.kv-forn-modal{max-width:720px}.kv-avaliacao-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.kv-forn-modal small{color:#6b7f96}
+@media(max-width:760px){.kv-avaliacao-grid{grid-template-columns:1fr}.kv-forn-modal{max-width:96vw}}

@@ -199,6 +199,9 @@
       <div class="kv-hero-actions">
         <button id="btn-kpi-compras" class="kpi-tab-btn active" onclick="switchKPI('compras')">📊 KPI Compras</button>
         <button id="btn-kpi-almox" class="kpi-tab-btn" onclick="switchKPI('almox')">📦 KPI Almoxarifado</button>
+        <button id="btn-kpi-fornecedores" class="kpi-tab-btn" onclick="switchKPI('fornecedores')">🏢 Fornecedores</button>
+        <button id="btn-kpi-saving" class="kpi-tab-btn" disabled title="Próxima implementação">💰 Saving</button>
+        <button id="btn-kpi-frete" class="kpi-tab-btn" disabled title="Próxima implementação">🚚 Frete Nacional</button>
       </div>
     </section>
     <div class="kv-page-content kv-kpi-content">
@@ -300,6 +303,20 @@
         <div class="data-table-wrap" id="almox-retirada-table"></div>
       </div>
     </div><!-- /kpi-pane-almox -->
+
+    <!-- KPI / DASHBOARD DE FORNECEDORES -->
+    <div id="kpi-pane-fornecedores" style="display:none">
+      <div class="kv-kpi-topline">
+        <div><div class="kv-kpi-eyebrow">Desempenho de fornecedores</div><h2>Fornecedores</h2><p>Volume comprado, saving, pontualidade e avaliação qualitativa em uma única visão.</p></div>
+        <button class="btn btn-primary" onclick="openAvaliacaoFornecedor()">⭐ Avaliar fornecedor</button>
+      </div>
+      <div class="kpi-grid kv-kpi-primary" id="forn-kpi-grid"></div>
+      <div class="card kv-forn-card">
+        <div class="card-title kv-kpi-card-head"><div><span>🏢</span><div>Desempenho por Fornecedor<small>Indicadores objetivos e avaliações registradas.</small></div></div><button class="btn btn-secondary" onclick="loadDashboardFornecedores()">🔄 Atualizar</button></div>
+        <div class="data-table-wrap" id="forn-dashboard-table"><div class="kv-admin-loading">Carregando indicadores...</div></div>
+      </div>
+      <div class="kv-forn-note">ℹ️ Pontualidade considera somente pedidos que possuem data prevista e data de recebimento. A quantidade de entregas mensuráveis é exibida para dar contexto ao percentual.</div>
+    </div><!-- /kpi-pane-fornecedores -->
     </div><!-- /kv-page-content -->
   </div><!-- /tab-painel -->
 
@@ -672,5 +689,21 @@
 </div>
 
 <script src="js/app.js?v=1.2.29"></script>
+
+<div class="modal-overlay" id="modal-avaliacao-fornecedor" style="display:none">
+  <div class="modal kv-forn-modal">
+    <div class="modal-header"><div><h3>⭐ Avaliar fornecedor</h3><p>Registre apenas os aspectos que exigem avaliação humana.</p></div><button class="modal-close" onclick="closeAvaliacaoFornecedor()">×</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label>Pedido / fornecedor *</label><select id="aval-pedido" onchange="kvSyncFornecedorAvaliacao()"></select><small id="aval-fornecedor-label"></small></div>
+      <div class="kv-avaliacao-grid">
+        <div class="form-group"><label>Atendimento *</label><select id="aval-atendimento"><option value="">Selecione</option><option value="1">1 — Muito ruim</option><option value="2">2 — Ruim</option><option value="3">3 — Regular</option><option value="4">4 — Bom</option><option value="5">5 — Excelente</option></select></div>
+        <div class="form-group"><label>Qualidade / Conformidade *</label><select id="aval-qualidade"><option value="">Selecione</option><option value="1">1 — Muito ruim</option><option value="2">2 — Ruim</option><option value="3">3 — Regular</option><option value="4">4 — Bom</option><option value="5">5 — Excelente</option></select></div>
+        <div class="form-group"><label>Flexibilidade comercial</label><select id="aval-flexibilidade"><option value="">Não avaliar</option><option value="1">1 — Muito ruim</option><option value="2">2 — Ruim</option><option value="3">3 — Regular</option><option value="4">4 — Bom</option><option value="5">5 — Excelente</option></select></div>
+      </div>
+      <div class="form-group"><label>Observação</label><textarea id="aval-observacao" rows="3" placeholder="Ex.: comunicação, tratativa de divergência, qualidade do material..."></textarea></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="closeAvaliacaoFornecedor()">Cancelar</button><button class="btn btn-primary" id="btn-salvar-avaliacao" onclick="salvarAvaliacaoFornecedor()">Salvar avaliação</button></div>
+  </div>
+</div>
 </body>
 </html>
