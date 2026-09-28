@@ -200,8 +200,8 @@
         <button id="btn-kpi-compras" class="kpi-tab-btn active" onclick="switchKPI('compras')">📊 KPI Compras</button>
         <button id="btn-kpi-almox" class="kpi-tab-btn" onclick="switchKPI('almox')">📦 KPI Almoxarifado</button>
         <button id="btn-kpi-fornecedores" class="kpi-tab-btn" onclick="switchKPI('fornecedores')">🏢 Fornecedores</button>
-        <button id="btn-kpi-saving" class="kpi-tab-btn" disabled title="Próxima implementação">💰 Saving</button>
-        <button id="btn-kpi-frete" class="kpi-tab-btn" disabled title="Próxima implementação">🚚 Frete Nacional</button>
+        <button id="btn-kpi-saving" class="kpi-tab-btn" onclick="switchKPI('saving')">💰 Saving</button>
+        <button id="btn-kpi-frete" class="kpi-tab-btn" onclick="switchKPI('frete')">🚚 Frete Nacional</button>
       </div>
     </section>
     <div class="kv-page-content kv-kpi-content">
@@ -317,6 +317,14 @@
       </div>
       <div class="kv-forn-note">ℹ️ Pontualidade considera somente pedidos que possuem data prevista e data de recebimento. A quantidade de entregas mensuráveis é exibida para dar contexto ao percentual.</div>
     </div><!-- /kpi-pane-fornecedores -->
+
+    <div id="kpi-pane-saving" style="display:none">
+      <div class="empty-state"><div class="icon">💰</div><h3>KPI de Saving</h3><p>Estrutura preparada. Este será o próximo módulo de indicadores.</p></div>
+    </div>
+
+    <div id="kpi-pane-frete" style="display:none">
+      <div class="empty-state"><div class="icon">🚚</div><h3>KPI de Frete Nacional</h3><p>Estrutura preparada. Este módulo será implementado após o KPI de Saving.</p></div>
+    </div>
     </div><!-- /kv-page-content -->
   </div><!-- /tab-painel -->
 
@@ -688,7 +696,7 @@
   </div>
 </div>
 
-<script src="js/app.js?v=1.2.29"></script>
+<script src="js/app.js?v=1.2.31"></script>
 
 <div class="modal-overlay" id="modal-avaliacao-fornecedor" style="display:none">
   <div class="modal kv-forn-modal">

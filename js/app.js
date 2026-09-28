@@ -1561,24 +1561,35 @@ function renderComprasChart() {
 window._kpiView = 'compras';
 
 function switchKPI(view) {
+  const validViews = ['compras','almox','fornecedores','saving','frete'];
+  if (!validViews.includes(view)) view = 'compras';
   window._kpiView = view;
-  document.getElementById('kpi-pane-compras').style.display = view === 'compras' ? 'block' : 'none';
-  document.getElementById('kpi-pane-almox').style.display   = view === 'almox'   ? 'block' : 'none';
-  const btnC = document.getElementById('btn-kpi-compras');
-  const btnA = document.getElementById('btn-kpi-almox');
-  if (btnC) btnC.classList.toggle('active', view === 'compras');
-  if (btnA) btnA.classList.toggle('active',   view === 'almox');
+
+  validViews.forEach(v => {
+    const pane = document.getElementById('kpi-pane-' + v);
+    if (pane) pane.style.display = v === view ? 'block' : 'none';
+    const btn = document.getElementById('btn-kpi-' + v);
+    if (btn) btn.classList.toggle('active', v === view);
+  });
+
+  const titles = {
+    compras: ['Painel de KPI','Indicadores que impulsionam melhores decisões.'],
+    almox: ['KPI Almoxarifado','Indicadores operacionais do almoxarifado'],
+    fornecedores: ['Indicadores — Fornecedores','Desempenho comercial, operacional e qualitativo dos fornecedores.'],
+    saving: ['KPI de Saving','Consolidação de saving por pedido, fornecedor, comprador e período.'],
+    frete: ['KPI de Frete Nacional','Custos de frete, CIF/FOB e oportunidades de consolidação.']
+  };
   const painelTitle = document.getElementById('painel-title');
-  if (painelTitle) painelTitle.textContent = view === 'compras' ? 'Painel de KPI' : 'KPI Almoxarifado';
+  const painelSub = document.getElementById('painel-sub');
+  if (painelTitle) painelTitle.textContent = titles[view][0];
+  if (painelSub) painelSub.textContent = titles[view][1];
+
   if (view === 'almox' && !window.compradorMode && window.almoxarifeMode) {
     const btnC = document.getElementById('btn-kpi-compras');
     if (btnC) btnC.style.display = 'none';
   }
-  const painelSub = document.getElementById('painel-sub');
-  if (painelSub) painelSub.textContent = view === 'compras'
-    ? 'Indicadores que impulsionam melhores decisões.'
-    : 'Indicadores operacionais do almoxarifado';
   if (view === 'almox') renderKPIAlmox();
+  if (view === 'fornecedores') loadDashboardFornecedores();
 }
 
 function renderKPIAlmox() {
@@ -5867,14 +5878,3 @@ async function salvarAvaliacaoFornecedor(){
   }catch(e){toast(e.message||'Não foi possível salvar a avaliação.','error');}
   finally{if(btn){btn.disabled=false;btn.textContent=old||'Salvar avaliação';}}
 }
-
-const _switchKPIV130 = switchKPI;
-switchKPI = function(view){
-  if(view!=='fornecedores') return _switchKPIV130(view);
-  window._kpiView='fornecedores';
-  ['compras','almox','fornecedores'].forEach(v=>{const pane=document.getElementById('kpi-pane-'+v);if(pane)pane.style.display=v===view?'block':'none';});
-  ['compras','almox','fornecedores'].forEach(v=>{const b=document.getElementById('btn-kpi-'+v);if(b)b.classList.toggle('active',v===view);});
-  const title=document.getElementById('painel-title');if(title)title.textContent='Indicadores — Fornecedores';
-  const sub=document.getElementById('painel-sub');if(sub)sub.textContent='Desempenho comercial, operacional e qualitativo dos fornecedores.';
-  loadDashboardFornecedores();
-};
