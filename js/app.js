@@ -3142,6 +3142,24 @@ function openModal(sc) {
   const canEdit  = window.compradorMode || canAlmox;
   const canReceber = window.compradorMode || canAlmox;
 
+  const podeGerirCotacoes = (window.kvAccessRole==='admin'||window.kvAccessRole==='comprador'||window.compradorMode);
+  const statusNormalizadoCotacao = String(p.status||'').trim().toLocaleLowerCase('pt-BR');
+  const statusEmCotacao = statusNormalizadoCotacao === 'cotação' || statusNormalizadoCotacao === 'cotacao';
+  const comparativoCotacaoHtml = (statusEmCotacao && podeGerirCotacoes) ? `
+    <div style="margin:4px 0 20px;background:rgba(0,169,157,.05);border:1px solid rgba(0,169,157,.20);border-radius:12px;padding:15px">
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;margin-bottom:12px">
+        <div><div style="font-weight:800;font-size:15px">⚖️ Comparativo de Cotações</div><div style="font-size:12px;color:var(--muted);margin-top:3px">O comparativo fica disponível enquanto o pedido está na etapa Cotação. Faça a análise individual de cada item.</div></div>
+        <span style="font-size:11px;color:var(--muted);background:var(--surface2);padding:6px 9px;border-radius:999px">${(p.itens||[]).length} item(ns)</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${(p.itens||[]).map((item,idx)=>{
+          const concluido=!!item.modalidadeCotacao;
+          const rotulo=item.modalidadeCotacao==='COMPARACAO'?'Comparação concluída':item.modalidadeCotacao==='FORNECEDOR_UNICO'?'Fornecedor único':item.modalidadeCotacao==='DISPENSA'?'Dispensa registrada':'Aguardando análise';
+          return `<div style="display:flex;justify-content:space-between;gap:12px;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:11px 12px"><div style="min-width:0"><div style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHTML(item.descricao||('Item '+(idx+1)))}</div><div style="font-size:11px;color:${concluido?'#059669':'var(--muted)'};margin-top:3px">${concluido?'✓ ':''}${rotulo}</div></div><button class="btn ${concluido?'btn-secondary':'btn-primary'}" style="padding:7px 11px;font-size:12px;flex:none" onclick="openComparativoCotacoes('${p.sc}',${idx})">⚖️ ${concluido?'Revisar':'Comparar'}</button></div>`;
+        }).join('')}
+      </div>
+    </div>` : '';
+
   const itensHtml = (p.itens||[]).map((item, idx) => {
     const status = getItemStatus(item);
     const saldo = getItemSaldo(item);
