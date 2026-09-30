@@ -750,6 +750,23 @@ function openModal(sc) {
     </tr>`;
   }).join('');
 
+  const podeGerirCotacoes = (window.kvAccessRole==='admin'||window.kvAccessRole==='comprador'||window.compradorMode);
+  const statusEmCotacao = String(p.status||'').trim().toLowerCase() === 'cotação' || String(p.status||'').trim().toLowerCase() === 'cotacao';
+  const comparativoCotacaoHtml = (statusEmCotacao && podeGerirCotacoes) ? `
+    <div style="margin:4px 0 20px;background:rgba(0,169,157,.05);border:1px solid rgba(0,169,157,.20);border-radius:12px;padding:15px">
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;margin-bottom:12px">
+        <div><div style="font-weight:800;font-size:15px">⚖️ Comparativo de Cotações</div><div style="font-size:12px;color:var(--muted);margin-top:3px">O comparativo fica disponível enquanto o pedido está na etapa Cotação. Faça a análise individual de cada item.</div></div>
+        <span style="font-size:11px;color:var(--muted);background:var(--surface2);padding:6px 9px;border-radius:999px">${(p.itens||[]).length} item(ns)</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${(p.itens||[]).map((item,idx)=>{
+          const concluido=!!item.modalidadeCotacao;
+          const rotulo=item.modalidadeCotacao==='COMPARACAO'?'Comparação concluída':item.modalidadeCotacao==='FORNECEDOR_UNICO'?'Fornecedor único':item.modalidadeCotacao==='DISPENSA'?'Dispensa registrada':'Aguardando análise';
+          return `<div style="display:flex;justify-content:space-between;gap:12px;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:11px 12px"><div style="min-width:0"><div style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHTML(item.descricao||('Item '+(idx+1)))}</div><div style="font-size:11px;color:${concluido?'#059669':'var(--muted)'};margin-top:3px">${concluido?'✓ ':''}${rotulo}</div></div><button class="btn ${concluido?'btn-secondary':'btn-primary'}" style="padding:7px 11px;font-size:12px;flex:none" onclick="openComparativoCotacoes('${p.sc}',${idx})">⚖️ ${concluido?'Revisar':'Comparar'}</button></div>`;
+        }).join('')}
+      </div>
+    </div>` : '';
+
   document.getElementById('modal-content').innerHTML = `
     <div class="modal-header">
       <div>
@@ -2196,7 +2213,7 @@ function renderPedidosTable() {
       <tbody>${filtered.map(p => `
         <tr class="clickable" onclick="openModal('${p.sc}')">
           <td><strong style="color:var(--accent)">${p.sc}</strong></td>
-          <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${p.itens&&p.itens[0]?p.itens[0].descricao:''}">${p.itens&&p.itens[0]?p.itens[0].descricao+(p.itens.length>1?' <span style="color:var(--muted);font-size:11px">+${p.itens.length-1}</span>':''):'—'}</td>
+          <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${p.itens&&p.itens[0]?escapeHTML(p.itens[0].descricao||''):''}">${p.itens&&p.itens[0]?escapeHTML(p.itens[0].descricao||'—')+(p.itens.length>1?' <span style="color:var(--muted);font-size:11px;font-weight:600">+'+(p.itens.length-1)+' item'+(p.itens.length-1>1?'s':'')+'</span>':''):'—'}</td>
           <td>${p.origem==='reposicao'?'<span style="color:#00a99d;font-size:11px;font-weight:600">Reposicao</span>':p.origem==='programada'?'<span style="color:#7c3aed;font-size:11px;font-weight:600">Programada</span>':'<span style="color:var(--muted);font-size:11px">Formulario</span>'}</td>
           <td>${p.empresa||'—'}</td>
           <td>${formatDate(p.data)}</td>
@@ -3140,7 +3157,7 @@ function openModal(sc) {
       + '<td style="padding:8px">'+escapeHTML(item.ref||'—')+'</td>'
       + '<td style="padding:8px">'+statusItemBadge(status)+'</td>'
       + '<td style="padding:8px;min-width:130px">'+buildItemRecebimentoResumo(item)+'</td>'
-      + '<td style="padding:8px"><div style="display:flex;gap:6px;flex-wrap:wrap">'+recBtn+((window.kvAccessRole==='admin'||window.kvAccessRole==='comprador'||window.compradorMode)?'<button class="btn btn-secondary" style="padding:6px 10px;font-size:12px" onclick="openComparativoCotacoes(\''+p.sc+'\','+idx+')">⚖️ Cotações</button>':'')+'</div></td>'
+      + '<td style="padding:8px"><div style="display:flex;gap:6px;flex-wrap:wrap">'+recBtn+'</div></td>'
       + '</tr>';
   }).join('');
 
@@ -3172,6 +3189,8 @@ function openModal(sc) {
         <tbody>${itensHtml}</tbody>
       </table>
     </div>
+
+    ${comparativoCotacaoHtml}
 
     ${buildHistoricoRecebimentos(p)}
 
