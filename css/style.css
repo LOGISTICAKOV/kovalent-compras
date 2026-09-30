@@ -935,3 +935,43 @@ body:not(.auth-locked) #tab-programadas>.page-title,body:not(.auth-locked) #tab-
   .kv-transportadora-form{grid-template-columns:1fr;padding:16px;gap:14px}
   .kv-transportadora-form .span-2{grid-column:auto}
 }
+
+/* v1.2.50 — Registrar Frete Nacional: layout mais amplo e respirado */
+.kv-frete-modal{
+  width:min(1080px,94vw);
+  max-width:1080px;
+  max-height:90vh;
+}
+.kv-frete-modal .modal-header{padding:24px 30px 18px}
+.kv-frete-modal .modal-body{padding:22px 30px 28px}
+.kv-frete-modal .modal-footer{padding:16px 30px 22px}
+.kv-frete-modal .modal-header h3{font-size:20px;margin-bottom:5px}
+.kv-frete-modal .modal-header p{font-size:13px;line-height:1.5}
+.kv-frete-modal .kv-frete-form-grid{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:18px 22px;
+  padding:20px;
+  margin-bottom:20px;
+  border:1px solid #d8e5ef;
+  border-radius:14px;
+  background:#f8fbfd;
+}
+.kv-frete-modal .kv-frete-form-grid .form-group{margin-bottom:0}
+.kv-frete-modal input,.kv-frete-modal select{min-height:44px}
+.kv-frete-modal .kv-location-row{grid-template-columns:100px minmax(0,1fr);gap:10px}
+.kv-frete-modal .modal-body > .form-group{margin-top:20px}
+.kv-frete-modal .kv-frete-orders{
+  max-height:260px;
+  padding:10px;
+  border-radius:12px;
+}
+.kv-frete-modal .kv-frete-order{padding:12px 13px;gap:11px;font-size:13px}
+.kv-frete-modal .kv-frete-order small{font-size:11px;margin-top:2px}
+.kv-frete-modal textarea{min-height:92px;resize:vertical}
+.kv-frete-modal .modal-footer .btn{min-height:42px;padding-left:22px;padding-right:22px}
+@media(max-width:760px){
+  .kv-frete-modal{width:96vw;max-height:92vh}
+  .kv-frete-modal .modal-header,.kv-frete-modal .modal-body,.kv-frete-modal .modal-footer{padding-left:18px;padding-right:18px}
+  .kv-frete-modal .kv-frete-form-grid{grid-template-columns:1fr;padding:16px;gap:14px}
+  .kv-frete-modal .kv-location-row{grid-template-columns:82px minmax(0,1fr)}
+}
