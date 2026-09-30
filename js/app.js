@@ -920,10 +920,8 @@ function selectStatusOption(el, next) {
       + '<label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">📝 Número do Pedido de Compra *</label>'
       + '<input type="text" id="us-pc" placeholder="Ex: PC-0001" style="width:100%">'
       + '</div>'
-      + '<div class="form-group" style="margin-bottom:14px">'
-      + '<label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">💰 Valor Negociado / Pago (R$) *</label>'
-      + '<input type="number" id="us-valorpago" placeholder="0,00" step="0.01" min="0" style="width:100%">'
-      + '</div>';
+      + '<input type="hidden" id="us-valorpago" value="0">'
+      + '<div style="background:rgba(0,169,157,0.06);border:1px solid rgba(0,169,157,0.18);border-radius:10px;padding:11px 12px;margin-bottom:14px;font-size:12px;color:var(--muted)">💰 O valor comprado será calculado automaticamente pela soma dos valores informados por item abaixo. A referência cotada vem do Comparativo e não pode ser alterada nesta etapa.</div>';
 
   } else if (next === 'Conferência') {
     extraFields = '<div style="background:rgba(14,165,233,0.08);border:1px solid rgba(14,165,233,0.2);border-radius:8px;padding:12px;margin-bottom:14px;font-size:13px">'
@@ -1099,7 +1097,7 @@ function confirmUpdateStatus() {
 
   // per-step validation & data
   if (next === 'Cotação') {
-    // v1.2.44: o Comparativo é a fonte única da etapa Cotação.
+    // v1.2.45: o Comparativo é a fonte única da etapa Cotação.
     // Não exige mais fornecedor/valor duplicados neste modal.
     p.dataCotacao = today;
 
@@ -4347,7 +4345,7 @@ function openSavingModal(tipo) {
     const titulo = isCotacao ? '💬 Cotação por item' : '📝 Negociação / Compra por item';
     const ajuda = isCotacao
       ? 'Preencha o fornecedor cotado e o valor cotado de cada item. O valor geral da cotação será calculado automaticamente.'
-      : 'Preencha o fornecedor comprado e o valor negociado de cada item. O saving será calculado automaticamente por item e somado no KPI.';
+      : 'A referência da cotação vem do Comparativo e fica bloqueada. Informe apenas o fornecedor efetivamente comprado, o valor final negociado e a observação. O saving será calculado automaticamente.';
 
     const rows = p.itens.map((item, idx) => {
       const qtd = v117GetQtd(item);
@@ -4366,10 +4364,10 @@ function openSavingModal(tipo) {
 
       return '<tr>'
         + '<td style="padding:8px;min-width:210px"><strong>' + desc + '</strong><div style="font-size:11px;color:var(--muted)">Qtd: ' + qtd + ' ' + unidade + ref + '</div></td>'
-        + '<td style="padding:8px"><input class="v117-forn-cotado" data-idx="' + idx + '" value="' + v117Escape(item.fornecedorCotado || '') + '" placeholder="Fornecedor cotado" style="width:150px"></td>'
-        + '<td style="padding:8px"><input class="v117-valor-cotado" data-idx="' + idx + '" type="number" step="0.01" min="0" value="' + (v117ValorCotado(item) || '') + '" placeholder="0,00" style="width:105px" oninput="v117AtualizarPreviewSaving()"></td>'
-        + '<td style="padding:8px"><input class="v117-forn-comprado" data-idx="' + idx + '" value="' + v117Escape(item.fornecedorComprado || '') + '" placeholder="Fornecedor comprado" style="width:150px"></td>'
-        + '<td style="padding:8px"><input class="v117-valor-comprado" data-idx="' + idx + '" type="number" step="0.01" min="0" value="' + (v117ValorComprado(item) || '') + '" placeholder="0,00" style="width:105px" oninput="v117AtualizarPreviewSaving()"></td>'
+        + '<td style="padding:8px;min-width:150px"><div style="font-weight:700">' + v117Escape(item.fornecedorCotado || '—') + '</div><div style="font-size:10px;color:var(--muted);margin-top:3px">🔒 definido no Comparativo</div></td>'
+        + '<td style="padding:8px;min-width:120px"><strong style="color:#f59e0b">' + v117FmtBRL(v117ValorCotado(item)) + '</strong><div style="font-size:10px;color:var(--muted);margin-top:3px">🔒 referência</div></td>'
+        + '<td style="padding:8px"><input class="v117-forn-comprado" data-idx="' + idx + '" value="' + v117Escape(item.fornecedorComprado || '') + '" placeholder="Fornecedor comprado" style="width:170px"></td>'
+        + '<td style="padding:8px"><input class="v117-valor-comprado" data-idx="' + idx + '" type="number" step="0.01" min="0" value="' + (v117ValorComprado(item) || '') + '" placeholder="0,00" style="width:115px" oninput="v117AtualizarPreviewSaving()"></td>'
         + '<td style="padding:8px"><input class="v117-obs-neg" data-idx="' + idx + '" value="' + v117Escape(item.obsNegociacao || '') + '" placeholder="Motivo / detalhe" style="width:180px"></td>'
         + '<td style="padding:8px"><strong class="v117-saving-preview" data-idx="' + idx + '" style="color:#059669">' + v117FmtBRL(v117Saving(item)) + '</strong></td>'
         + '</tr>';
@@ -4391,14 +4389,15 @@ function openSavingModal(tipo) {
   }
 
   window.v117AtualizarPreviewSaving = function() {
-    let totalCotado = 0;
+    const sc = window._currentUpdateSC;
+    const pedidoAtual = pedidos.find(x => x.sc === sc);
+    let totalCotado = (pedidoAtual?.itens || []).reduce((s, item) => s + v117ValorCotado(item), 0);
     let totalComprado = 0;
-    document.querySelectorAll('.v117-valor-cotado').forEach(el => totalCotado += v117Parse(el.value));
     document.querySelectorAll('.v117-valor-comprado').forEach(el => totalComprado += v117Parse(el.value));
 
     document.querySelectorAll('.v117-saving-preview').forEach(span => {
-      const idx = span.dataset.idx;
-      const cot = v117Parse(document.querySelector('.v117-valor-cotado[data-idx="' + idx + '"]')?.value);
+      const idx = parseInt(span.dataset.idx, 10);
+      const cot = v117ValorCotado(pedidoAtual?.itens?.[idx]);
       const cmp = v117Parse(document.querySelector('.v117-valor-comprado[data-idx="' + idx + '"]')?.value);
       const sv = cot - cmp;
       span.textContent = v117FmtBRL(sv);
@@ -4429,7 +4428,7 @@ function openSavingModal(tipo) {
 
     hideLegacyFinanceFields(next);
 
-    // v1.2.44: nunca renderizar o editor legado de Cotação por item.
+    // v1.2.45: nunca renderizar o editor legado de Cotação por item.
     // A cotação é cadastrada exclusivamente no Comparativo.
     if (next === 'Cotação') return;
 
@@ -4441,14 +4440,6 @@ function openSavingModal(tipo) {
   function v117ApplyInputs(p) {
     if (!p || !Array.isArray(p.itens) || !document.getElementById('v117-saving-status')) return false;
 
-    document.querySelectorAll('.v117-forn-cotado').forEach(el => {
-      const item = p.itens[parseInt(el.dataset.idx, 10)];
-      if (item) item.fornecedorCotado = el.value.trim();
-    });
-    document.querySelectorAll('.v117-valor-cotado').forEach(el => {
-      const item = p.itens[parseInt(el.dataset.idx, 10)];
-      if (item) item.valorCotadoItem = v117Parse(el.value);
-    });
     document.querySelectorAll('.v117-forn-comprado').forEach(el => {
       const item = p.itens[parseInt(el.dataset.idx, 10)];
       if (item) item.fornecedorComprado = el.value.trim();
