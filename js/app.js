@@ -910,13 +910,9 @@ function selectStatusOption(el, next) {
   // extra fields per status
   let extraFields = '';
   if (next === 'Cotação') {
-    extraFields = '<div class="form-group" style="margin-bottom:14px">'
-      + '<label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">Fornecedor Escolhido</label>'
-      + '<input type="text" id="us-fornecedor" placeholder="Nome do fornecedor" style="width:100%">'
-      + '</div>'
-      + '<div class="form-group" style="margin-bottom:14px">'
-      + '<label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">💰 Valor da 1ª Cotação (R$) *</label>'
-      + '<input type="number" id="us-cotacao" placeholder="0,00" step="0.01" min="0" style="width:100%">'
+    extraFields = '<div style="background:rgba(0,169,157,0.07);border:1px solid rgba(0,169,157,0.22);border-radius:12px;padding:14px 15px;margin-bottom:14px">'
+      + '<div style="font-weight:800;color:var(--accent2);margin-bottom:5px">⚖️ Comparativo de Cotações</div>'
+      + '<div style="font-size:12px;color:var(--muted);line-height:1.5">Ao confirmar a entrada em <strong>Cotação</strong>, o Comparativo será aberto automaticamente. Fornecedor, preço, frete, prazo e proposta vencedora serão registrados somente nele.</div>'
       + '</div>';
 
   } else if (next === 'Pedido de Compra') {
@@ -1103,12 +1099,9 @@ function confirmUpdateStatus() {
 
   // per-step validation & data
   if (next === 'Cotação') {
-    const cotVal = parseFloat(document.getElementById('us-cotacao')?.value) || 0;
-    if (!cotVal) { toast('Informe o valor da 1ª cotação', 'error'); return; }
-    p.valorCotacao = cotVal;
-    p.dataCotacao  = today;
-    const forn = document.getElementById('us-fornecedor')?.value;
-    if (forn) p.fornecedorEsc = forn;
+    // v1.2.44: o Comparativo é a fonte única da etapa Cotação.
+    // Não exige mais fornecedor/valor duplicados neste modal.
+    p.dataCotacao = today;
 
   } else if (next === 'Pedido de Compra') {
     const pc   = document.getElementById('us-pc')?.value?.trim();
@@ -1177,7 +1170,12 @@ function confirmUpdateStatus() {
   p.status = next;
   dbUpdate(p);
   toast(rollbackLimpouDados ? '✔ Status atualizado para: ' + next + '. Dados das etapas posteriores foram limpos.' : '✔ Status atualizado para: ' + next, 'success');
-  openModal(sc);
+  if (next === 'Cotação' && Array.isArray(p.itens) && p.itens.length) {
+    // Após confirmar o status, abre automaticamente o comparativo do primeiro item.
+    setTimeout(() => openComparativoCotacoes(sc, 0), 0);
+  } else {
+    openModal(sc);
+  }
   renderPedidosTable();
   renderDashboard();
   try { renderRecebimentosCentral(); } catch(e) {}
@@ -4430,6 +4428,10 @@ function openSavingModal(tipo) {
     if (oldV116) oldV116.remove();
 
     hideLegacyFinanceFields(next);
+
+    // v1.2.44: nunca renderizar o editor legado de Cotação por item.
+    // A cotação é cadastrada exclusivamente no Comparativo.
+    if (next === 'Cotação') return;
 
     const html = v117BuildStatusFinanceiro(p, next);
     container.insertAdjacentHTML('afterbegin', html);
