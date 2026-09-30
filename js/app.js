@@ -5994,7 +5994,7 @@ function kvSavingDate(p){
 }
 function kvSavingLocalRows(){
   return (window.pedidos||pedidos||[]).map(p=>({
-    sc:p.sc||'—', fornecedor:p.fornecedorEsc||p.fornecedor_esc||'—', departamento:p.departamento||'Não informado',
+    sc:p.sc||'—', fornecedor:(()=>{const fs=[...new Set((p.itens||[]).map(i=>(i?.fornecedorComprado||i?.fornecedor_comprado||'').trim()).filter(Boolean))]; return fs.length?fs.join(' / '):(p.fornecedorEsc||p.fornecedor_esc||'—');})(), departamento:p.departamento||'Não informado',
     valor_cotacao:kvSavingNumber(p.valorCotacao??p.valor_cotacao), valor_comprado:kvSavingNumber(p.valorPago??p.valor_pago),
     saving:kvSavingOrderValue(p), data:kvSavingDate(p)
   })).filter(r=>r.saving!==0);
@@ -6008,7 +6008,7 @@ function kvSavingNormalizePayload(payload){
   // A RPC retorna JSONB. O normalizador aceita pequenas variações de nomes
   // para manter compatibilidade com futuras evoluções do backend.
   const root=Array.isArray(payload)?{pedidos:payload}:(payload||{});
-  let orders=kvSavingArrayFromPayload(root,['pedidos','orders','detalhes','por_pedido','saving_por_pedido']);
+  let orders=kvSavingArrayFromPayload(root,['ranking','pedidos','orders','detalhes','por_pedido','saving_por_pedido']);
   if(orders.length){
     orders=orders.map(r=>({
       sc:r.sc||r.pedido||'—', fornecedor:r.fornecedor||r.fornecedor_esc||'—', departamento:r.departamento||r.setor||'Não informado',
