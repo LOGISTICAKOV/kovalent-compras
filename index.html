@@ -342,7 +342,7 @@
     <div id="kpi-pane-frete" style="display:none">
       <div class="kv-frete-head">
         <div><div class="section-eyebrow">LOGÍSTICA NACIONAL</div><h2>Frete Nacional</h2><p>Custos, consolidação de pedidos, transportadoras e rotas em uma única visão.</p></div>
-        <div class="kv-frete-actions"><button class="btn btn-secondary" onclick="loadDashboardFreteNacional()">🔄 Atualizar</button><button class="btn btn-primary" onclick="openFreteNacionalModal()">➕ Registrar frete</button></div>
+        <div class="kv-frete-actions"><button class="btn btn-secondary" onclick="loadDashboardFreteNacional()">🔄 Atualizar</button><button class="btn btn-secondary" onclick="openTransportadorasModal()">🚛 Transportadoras</button><button class="btn btn-primary" onclick="openFreteNacionalModal()">➕ Registrar frete</button></div>
       </div>
       <div id="frete-kpi-grid" class="kv-summary-grid kv-summary-grid-5"></div>
       <div class="kv-frete-layout">
@@ -723,7 +723,7 @@
   </div>
 </div>
 
-<script src="js/app.js?v=1.2.47"></script>
+<script src="js/app.js?v=1.2.48"></script>
 
 <div class="modal-overlay" id="modal-avaliacao-fornecedor" style="display:none">
   <div class="modal kv-forn-modal">
@@ -747,17 +747,34 @@
     <div class="modal-body">
       <div class="kv-frete-form-grid">
         <div class="form-group"><label>Data do frete *</label><input type="date" id="frete-data"></div>
-        <div class="form-group"><label>Transportadora *</label><input type="text" id="frete-transportadora" placeholder="Ex.: Jadlog"></div>
+        <div class="form-group"><label>Transportadora *</label><select id="frete-transportadora"><option value="">Carregando transportadoras...</option></select></div>
         <div class="form-group"><label>Valor do frete *</label><input type="number" min="0" step="0.01" id="frete-valor" placeholder="0,00"></div>
         <div class="form-group"><label>Empresa</label><input type="text" id="frete-empresa" placeholder="Ex.: Kovalent"></div>
-        <div class="form-group"><label>Origem</label><input type="text" id="frete-origem" placeholder="Cidade / UF"></div>
-        <div class="form-group"><label>Destino</label><input type="text" id="frete-destino" placeholder="Cidade / UF"></div>
+        <div class="form-group kv-location-group"><label>Origem</label><div class="kv-location-row"><select id="frete-origem-uf" onchange="kvFreteCarregarMunicipios('origem')"><option value="">UF</option></select><select id="frete-origem-cidade" disabled><option value="">Selecione a UF</option></select></div></div>
+        <div class="form-group kv-location-group"><label>Destino</label><div class="kv-location-row"><select id="frete-destino-uf" onchange="kvFreteCarregarMunicipios('destino')"><option value="">UF</option></select><select id="frete-destino-cidade" disabled><option value="">Selecione a UF</option></select></div></div>
         <div class="form-group"><label>Tipo de transporte</label><select id="frete-tipo"><option value="">Selecione</option><option>Rodoviário</option><option>Aéreo</option><option>Motoboy</option><option>Correios</option><option>Retirada</option><option>Outro</option></select></div>
       </div>
       <div class="form-group"><label>Pedidos atendidos *</label><div id="frete-pedidos-list" class="kv-frete-orders"></div><small>Selecione todos os pedidos transportados neste mesmo frete.</small></div>
       <div class="form-group"><label>Observação</label><textarea id="frete-observacao" rows="3" placeholder="Informações adicionais sobre o transporte..."></textarea></div>
     </div>
     <div class="modal-footer"><button class="btn btn-secondary" onclick="closeFreteNacionalModal()">Cancelar</button><button class="btn btn-primary" id="btn-salvar-frete" onclick="salvarFreteNacional()">Salvar frete</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-transportadoras" style="display:none">
+  <div class="modal kv-transportadoras-modal">
+    <div class="modal-header"><div><h3>🚛 Transportadoras</h3><p>Cadastre e gerencie as transportadoras disponíveis no Frete Nacional.</p></div><button class="modal-close" onclick="closeTransportadorasModal()">×</button></div>
+    <div class="modal-body">
+      <div class="kv-transportadora-form">
+        <input type="hidden" id="transportadora-id">
+        <div class="form-group"><label>Nome *</label><input id="transportadora-nome" placeholder="Ex.: Braspress"></div>
+        <div class="form-group"><label>CNPJ</label><input id="transportadora-cnpj" placeholder="Opcional"></div>
+        <div class="form-group span-2"><label>Observação</label><input id="transportadora-observacao" placeholder="Informações adicionais"></div>
+        <div class="kv-transportadora-form-actions span-2"><button class="btn btn-secondary" onclick="kvLimparTransportadoraForm()">Limpar</button><button class="btn btn-primary" id="btn-salvar-transportadora" onclick="salvarTransportadora()">Salvar transportadora</button></div>
+      </div>
+      <div id="transportadoras-lista" class="kv-transportadoras-lista"></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="closeTransportadorasModal()">Fechar</button></div>
   </div>
 </div>
 </body>

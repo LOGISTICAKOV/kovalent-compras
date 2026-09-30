@@ -6389,3 +6389,118 @@ function buildResumoSavingPorItem(p){
   const rows=(p.itens||[]).filter(itemTemFinanceiro).map(i=>'<tr><td style="padding:8px">'+escapeHTML(i.descricao||'Item')+'</td><td style="padding:8px">'+(i.fornecedorCotado?escapeHTML(i.fornecedorCotado):'—')+'</td><td style="padding:8px">'+(kv146Reference(i)?fmtBRL(kv146Reference(i)):'—')+'</td><td style="padding:8px;color:#f59e0b">'+fmtBRL(kv146Winner(i))+'</td><td style="padding:8px">'+(i.fornecedorComprado?escapeHTML(i.fornecedorComprado):'—')+'</td><td style="padding:8px;color:#00a99d">'+fmtBRL(kv146Bought(i))+'</td><td style="padding:8px"><strong style="color:#059669">'+fmtBRL(kv146SavingCotacao(i))+'</strong></td><td style="padding:8px"><strong style="color:#059669">'+fmtBRL(kv146SavingDesconto(i))+'</strong></td><td style="padding:8px"><strong>'+fmtBRL(kv146SavingCotacao(i)+kv146SavingDesconto(i))+'</strong></td></tr>').join('');
   return '<div id="resumo-saving-item" style="margin-top:18px;background:rgba(0,169,157,0.06);border:1px solid rgba(0,169,157,0.18);border-radius:12px;padding:16px"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">💰 Saving por item</div><div style="font-size:13px"><strong>Saving de Cotação:</strong> '+fmtBRL(p.saving||0)+' · <strong>Saving de Desconto:</strong> '+fmtBRL(p.savingDesconto||0)+' · <strong style="color:#059669">Saving Total: '+fmtBRL(p.savingTotal||0)+'</strong></div></div><div class="data-table-wrap"><table style="width:100%;font-size:13px"><thead><tr><th>Item</th><th>Fornecedor vencedor</th><th>2ª melhor</th><th>Proposta vencedora</th><th>Fornecedor comprado</th><th>Valor comprado</th><th>Saving de Cotação</th><th>Saving de Desconto</th><th>Saving Total</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
 }
+
+// ============================================================
+// v1.2.48 — Frete Nacional aprimorado
+// Transportadoras cadastradas + UF/Cidade + pedidos disponíveis
+// + navegação Histórico de Fretes -> Solicitação
+// ============================================================
+const KV_UFS = [
+  ['AC',12],['AL',27],['AP',16],['AM',13],['BA',29],['CE',23],['DF',53],['ES',32],['GO',52],['MA',21],['MT',51],['MS',50],['MG',31],['PA',15],['PB',25],['PR',41],['PE',26],['PI',22],['RJ',33],['RN',24],['RS',43],['RO',11],['RR',14],['SC',42],['SP',35],['SE',28],['TO',17]
+];
+window.kvMunicipiosCache = window.kvMunicipiosCache || {};
+window.kvTransportadoras = window.kvTransportadoras || [];
+
+function kvFretePopularUFs(){
+  ['origem','destino'].forEach(tipo=>{
+    const el=document.getElementById(`frete-${tipo}-uf`); if(!el)return;
+    el.innerHTML='<option value="">UF</option>'+KV_UFS.map(([uf,cod])=>`<option value="${uf}" data-cod="${cod}">${uf}</option>`).join('');
+  });
+}
+async function kvFreteCarregarMunicipios(tipo){
+  const uf=document.getElementById(`frete-${tipo}-uf`)?.value||'';
+  const city=document.getElementById(`frete-${tipo}-cidade`); if(!city)return;
+  if(!uf){city.disabled=true;city.innerHTML='<option value="">Selecione a UF</option>';return;}
+  city.disabled=true; city.innerHTML='<option value="">Carregando cidades...</option>';
+  try{
+    let nomes=window.kvMunicipiosCache[uf];
+    if(!nomes){
+      const cod=KV_UFS.find(x=>x[0]===uf)?.[1];
+      const res=await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${cod}/municipios?orderBy=nome`);
+      if(!res.ok)throw new Error('Não foi possível consultar os municípios do IBGE.');
+      const data=await res.json(); nomes=(data||[]).map(x=>x.nome).filter(Boolean);
+      window.kvMunicipiosCache[uf]=nomes;
+      try{localStorage.setItem('kv_municipios_'+uf,JSON.stringify(nomes));}catch(e){}
+    }
+    city.innerHTML='<option value="">Selecione a cidade</option>'+nomes.map(n=>`<option value="${escapeHTML(n)}">${escapeHTML(n)}</option>`).join(''); city.disabled=false;
+  }catch(e){
+    try{const cached=JSON.parse(localStorage.getItem('kv_municipios_'+uf)||'[]');if(cached.length){window.kvMunicipiosCache[uf]=cached;city.innerHTML='<option value="">Selecione a cidade</option>'+cached.map(n=>`<option value="${escapeHTML(n)}">${escapeHTML(n)}</option>`).join('');city.disabled=false;return;}}catch(_){}
+    city.innerHTML='<option value="">Falha ao carregar cidades</option>'; toast(e.message||'Não foi possível carregar as cidades.','error');
+  }
+}
+async function kvCarregarTransportadorasSelect(){
+  const el=document.getElementById('frete-transportadora'); if(!el)return;
+  el.innerHTML='<option value="">Carregando transportadoras...</option>';
+  try{
+    const r=await fetch(SUPA_URL+'/rest/v1/transportadoras?select=*&ativo=eq.true&order=nome.asc',{headers:kvApiHeaders()});
+    if(!r.ok)throw new Error('Não foi possível carregar as transportadoras.');
+    const data=await r.json(); window.kvTransportadoras=data||[];
+    el.innerHTML='<option value="">Selecione a transportadora</option>'+data.map(t=>`<option value="${escapeHTML(t.nome)}">${escapeHTML(t.nome)}</option>`).join('');
+  }catch(e){el.innerHTML='<option value="">Cadastre uma transportadora</option>';toast(e.message,'error');}
+}
+
+openFreteNacionalModal = async function(){
+  const modal=document.getElementById('modal-frete-nacional'); if(!modal)return;
+  modal.style.display='flex'; document.getElementById('frete-data').value=new Date().toISOString().slice(0,10);
+  kvFretePopularUFs();
+  ['origem','destino'].forEach(tipo=>{const c=document.getElementById(`frete-${tipo}-cidade`);if(c){c.disabled=true;c.innerHTML='<option value="">Selecione a UF</option>';}});
+  kvCarregarTransportadorasSelect();
+  const list=document.getElementById('frete-pedidos-list'); list.innerHTML='<div class="kv-frete-empty">Carregando pedidos disponíveis...</div>';
+  try{
+    const [rp,rf]=await Promise.all([
+      fetch(SUPA_URL+'/rest/v1/pedidos?select=id,sc,empresa,departamento,fornecedor_esc,status&order=created_at.desc',{headers:kvApiHeaders()}),
+      fetch(SUPA_URL+'/rest/v1/fretes_nacionais?select=pedidos_ids',{headers:kvApiHeaders()})
+    ]);
+    if(!rp.ok)throw new Error('Não foi possível carregar os pedidos.');
+    const data=await rp.json(); const fretes=rf.ok?await rf.json():[];
+    const usados=new Set((fretes||[]).flatMap(f=>Array.isArray(f.pedidos_ids)?f.pedidos_ids:[]));
+    const disponiveis=(data||[]).filter(p=>p.id&&!usados.has(p.id)); window.kvFretePedidosRaw=disponiveis;
+    list.innerHTML=disponiveis.length?disponiveis.map(p=>`<label class="kv-frete-order"><input type="checkbox" value="${escapeHTML(p.id)}"><span><strong>${escapeHTML(p.sc||'Sem SC')}</strong><small>${escapeHTML([p.empresa,p.departamento,p.fornecedor_esc].filter(Boolean).join(' • ')||p.status||'Pedido')}</small></span></label>`).join(''):'<div class="kv-frete-empty"><strong>Nenhuma solicitação disponível.</strong><div class="kv-frete-order-note">Pedidos já vinculados a um frete deixam de aparecer aqui automaticamente.</div></div>';
+  }catch(e){list.innerHTML=`<div class="kv-frete-empty">${escapeHTML(e.message)}</div>`;}
+};
+
+salvarFreteNacional = async function(){
+  const data=document.getElementById('frete-data')?.value, transportadora=document.getElementById('frete-transportadora')?.value||'', valor=Number(document.getElementById('frete-valor')?.value||0);
+  const ids=[...document.querySelectorAll('#frete-pedidos-list input:checked')].map(x=>x.value);
+  const ouf=document.getElementById('frete-origem-uf')?.value||'', oc=document.getElementById('frete-origem-cidade')?.value||'';
+  const duf=document.getElementById('frete-destino-uf')?.value||'', dc=document.getElementById('frete-destino-cidade')?.value||'';
+  if(!data||!transportadora||!(valor>0)||!ids.length){toast('Preencha data, transportadora, valor e selecione ao menos um pedido.','error');return;}
+  if((ouf&&!oc)||(duf&&!dc)){toast('Selecione a cidade correspondente à UF informada.','error');return;}
+  const body={data_frete:data,transportadora,valor_frete:valor,empresa:document.getElementById('frete-empresa')?.value.trim()||null,origem:oc&&ouf?`${oc}/${ouf}`:null,destino:dc&&duf?`${dc}/${duf}`:null,tipo_transporte:document.getElementById('frete-tipo')?.value||null,observacao:document.getElementById('frete-observacao')?.value.trim()||null,pedidos_ids:ids};
+  const btn=document.getElementById('btn-salvar-frete'),old=btn.textContent;btn.disabled=true;btn.textContent='Salvando...';
+  try{
+    const res=await fetch(SUPA_URL+'/rest/v1/fretes_nacionais',{method:'POST',headers:kvApiHeaders('return=representation'),body:JSON.stringify(body)});
+    if(!res.ok){let m='Erro ao salvar frete.';try{const d=await res.json();m=d.message||d.details||m}catch(e){}throw new Error(m)}
+    closeFreteNacionalModal(); ['frete-valor','frete-empresa','frete-observacao'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''}); const t=document.getElementById('frete-tipo');if(t)t.value='';
+    toast(ids.length>1?`Frete salvo com ${ids.length} pedidos consolidados.`:'Frete salvo com sucesso.','success'); await loadDashboardFreteNacional();
+  }catch(e){toast(e.message||'Não foi possível salvar o frete.','error')}finally{btn.disabled=false;btn.textContent=old}
+};
+
+function kvFretePedidoLink(id){
+  const p=(pedidos||[]).find(x=>String(x.id)===String(id));
+  if(!p?.sc)return `<span class="kv-frete-single" title="Pedido não carregado nesta sessão">Pedido</span>`;
+  const sc=String(p.sc).replace(/'/g,"\\'");
+  return `<button class="kv-frete-sc-link" onclick="openModal('${sc}')" title="Abrir solicitação ${escapeHTML(p.sc)}">${escapeHTML(p.sc)}</button>`;
+}
+const _kvRenderDashboardFreteV148=renderDashboardFreteNacional;
+renderDashboardFreteNacional=function(rows,rpcData){
+  _kvRenderDashboardFreteV148(rows,rpcData);
+  const hist=document.getElementById('frete-history'); if(!hist)return;
+  rows=Array.isArray(rows)?rows:[];
+  hist.innerHTML=rows.length?`<table class="kv-frete-table"><thead><tr><th>Data</th><th>Transportadora</th><th>Empresa</th><th>Rota</th><th>Tipo</th><th>Solicitações</th><th>Valor</th></tr></thead><tbody>${rows.map(r=>{const ids=Array.isArray(r.pedidos_ids)?r.pedidos_ids:[];return `<tr><td>${kvFreteDate(r.data_frete)}</td><td><strong>${escapeHTML(r.transportadora||'—')}</strong></td><td>${escapeHTML(r.empresa||'—')}</td><td>${escapeHTML(r.origem||'—')} → ${escapeHTML(r.destino||'—')}</td><td>${escapeHTML(r.tipo_transporte||'—')}</td><td><div class="kv-frete-sc-links">${ids.length?ids.map(kvFretePedidoLink).join(''):'—'}</div></td><td><strong>${fmtBRL(r.valor_frete)}</strong></td></tr>`}).join('')}</tbody></table>`:'<div class="empty-state"><div class="icon">🚚</div><h3>Nenhum frete nacional registrado ainda</h3><p>Registre o primeiro frete para começar a acompanhar os indicadores.</p></div>';
+};
+
+async function openTransportadorasModal(){document.getElementById('modal-transportadoras').style.display='flex';kvLimparTransportadoraForm();await carregarTransportadorasGestao();}
+function closeTransportadorasModal(){const m=document.getElementById('modal-transportadoras');if(m)m.style.display='none';}
+function kvLimparTransportadoraForm(){['transportadora-id','transportadora-nome','transportadora-cnpj','transportadora-observacao'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});}
+async function carregarTransportadorasGestao(){
+  const box=document.getElementById('transportadoras-lista');box.innerHTML='<div class="kv-frete-empty">Carregando...</div>';
+  try{const r=await fetch(SUPA_URL+'/rest/v1/transportadoras?select=*&order=nome.asc',{headers:kvApiHeaders()});if(!r.ok)throw new Error('Não foi possível carregar as transportadoras.');const data=await r.json();window.kvTransportadoras=data||[];box.innerHTML=data.length?`<table class="kv-transportadoras-table"><thead><tr><th>Transportadora</th><th>CNPJ</th><th>Situação</th><th>Ações</th></tr></thead><tbody>${data.map(t=>`<tr><td><strong>${escapeHTML(t.nome)}</strong></td><td>${escapeHTML(t.cnpj||'—')}</td><td class="${t.ativo?'kv-status-active':'kv-status-inactive'}">${t.ativo?'Ativa':'Inativa'}</td><td><button class="btn btn-secondary" onclick="editarTransportadora('${t.id}')">Editar</button> <button class="btn btn-secondary" onclick="alternarTransportadora('${t.id}',${!t.ativo})">${t.ativo?'Inativar':'Ativar'}</button></td></tr>`).join('')}</tbody></table>`:'<div class="kv-frete-empty">Nenhuma transportadora cadastrada.</div>';}catch(e){box.innerHTML=`<div class="kv-frete-empty">${escapeHTML(e.message)}</div>`;}
+}
+function editarTransportadora(id){const t=(window.kvTransportadoras||[]).find(x=>x.id===id);if(!t)return;document.getElementById('transportadora-id').value=t.id;document.getElementById('transportadora-nome').value=t.nome||'';document.getElementById('transportadora-cnpj').value=t.cnpj||'';document.getElementById('transportadora-observacao').value=t.observacao||'';document.getElementById('transportadora-nome').focus();}
+async function salvarTransportadora(){
+  const id=document.getElementById('transportadora-id').value,nome=document.getElementById('transportadora-nome').value.trim();if(!nome){toast('Informe o nome da transportadora.','error');return;}
+  const body={nome,cnpj:document.getElementById('transportadora-cnpj').value.trim()||null,observacao:document.getElementById('transportadora-observacao').value.trim()||null,updated_at:new Date().toISOString()};const btn=document.getElementById('btn-salvar-transportadora');btn.disabled=true;
+  try{const url=SUPA_URL+'/rest/v1/transportadoras'+(id?`?id=eq.${encodeURIComponent(id)}`:'');const r=await fetch(url,{method:id?'PATCH':'POST',headers:kvApiHeaders('return=representation'),body:JSON.stringify(body)});if(!r.ok){let d={};try{d=await r.json()}catch(e){}throw new Error(d.message||'Não foi possível salvar a transportadora.')}toast(id?'Transportadora atualizada.':'Transportadora cadastrada.','success');kvLimparTransportadoraForm();await carregarTransportadorasGestao();}catch(e){toast(e.message,'error')}finally{btn.disabled=false;}
+}
+async function alternarTransportadora(id,ativo){try{const r=await fetch(SUPA_URL+`/rest/v1/transportadoras?id=eq.${encodeURIComponent(id)}`,{method:'PATCH',headers:kvApiHeaders('return=minimal'),body:JSON.stringify({ativo,updated_at:new Date().toISOString()})});if(!r.ok)throw new Error('Não foi possível alterar a situação.');toast(ativo?'Transportadora ativada.':'Transportadora inativada.','success');await carregarTransportadorasGestao();}catch(e){toast(e.message,'error')}}
