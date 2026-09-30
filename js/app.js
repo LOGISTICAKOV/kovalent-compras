@@ -5274,8 +5274,30 @@ async function kvInsertPedidoSeguro(pedido) {
   return { ok: false, erro: 'Não foi possível reservar um número de solicitação após várias tentativas.' };
 }
 
+
+// v1.2.52 — Feedback visual para campos obrigatórios da Solicitação.
+function kvClearRequiredHighlights() {
+  document.querySelectorAll('#tab-solicitar .kv-required-missing').forEach(el => el.classList.remove('kv-required-missing'));
+}
+function kvHighlightRequiredFields(ids) {
+  ids.forEach(id => document.getElementById(id)?.classList.add('kv-required-missing'));
+}
+document.addEventListener('input', (e) => {
+  if (e.target?.classList?.contains('kv-required-missing') && String(e.target.value || '').trim()) {
+    e.target.classList.remove('kv-required-missing');
+  }
+});
+document.addEventListener('change', (e) => {
+  if (e.target?.classList?.contains('kv-required-missing') && String(e.target.value || '').trim()) {
+    e.target.classList.remove('kv-required-missing');
+  }
+});
+
 submitSolicitacao = async function() {
   if (window.kvAccessRole === 'solicitante') kvApplySolicitanteIdentity();
+
+  // v1.2.52 — limpa destaques anteriores e valida visualmente os obrigatórios.
+  kvClearRequiredHighlights();
 
   const empresa = document.getElementById('f-empresa').value;
   const solicitante = document.getElementById('f-solicitante').value.trim();
@@ -5283,6 +5305,8 @@ submitSolicitacao = async function() {
   const prioridade = document.getElementById('f-prioridade').value;
   const necessidade = document.getElementById('f-necessidade').value;
   const justificativa = document.getElementById('f-justificativa').value.trim();
+  const aprovador = document.getElementById('f-aprovador').value.trim();
+  const dataSolicitacao = document.getElementById('f-data').value;
   const rows = document.querySelectorAll('#items-body .item-row');
   const items = [];
   rows.forEach(r => {
@@ -5291,8 +5315,22 @@ submitSolicitacao = async function() {
     if (desc) items.push(normalizeItem({ descricao: desc, unidade: inputs[1].value, qtd: inputs[2].value || '1', ref: inputs[3].value, qtdRecebida: 0, statusItem: 'Pendente', recebimentos: [] }));
   });
 
-  if (!empresa || !solicitante || !depto || !prioridade || !necessidade || !justificativa) {
-    toast('Preencha todos os campos obrigatórios (*)', 'error'); return;
+  const obrigatorios = [
+    ['f-empresa', empresa],
+    ['f-data', dataSolicitacao],
+    ['f-solicitante', solicitante],
+    ['f-depto', depto],
+    ['f-prioridade', prioridade],
+    ['f-necessidade', necessidade],
+    ['f-justificativa', justificativa],
+    ['f-aprovador', aprovador]
+  ];
+  const faltantes = obrigatorios.filter(([, valor]) => !String(valor || '').trim()).map(([id]) => id);
+  if (faltantes.length) {
+    kvHighlightRequiredFields(faltantes);
+    toast('Preencha os campos obrigatórios destacados em vermelho.', 'error');
+    document.getElementById(faltantes[0])?.focus();
+    return;
   }
   // Atributo min do navegador não substitui validação no envio (ex.: valor inserido manualmente).
   kvAtualizarPrazoNecessidade();
@@ -5313,7 +5351,7 @@ submitSolicitacao = async function() {
       necessidade, tipo: document.getElementById('f-tipo').value, itens: items,
       fornecedorSug: document.getElementById('f-fornecedor').value, linkProduto: document.getElementById('f-link').value,
       valorRef: parseFloat(document.getElementById('f-valref').value)||0, justificativa,
-      aprovador: document.getElementById('f-aprovador').value, obs: document.getElementById('f-obs').value,
+      aprovador, obs: document.getElementById('f-obs').value,
       status: 'Solicitado', dataCriacao: new Date().toISOString(), docNFE: ''
     });
 
