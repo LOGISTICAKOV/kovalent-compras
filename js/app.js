@@ -798,7 +798,7 @@ function openModal(sc) {
     ${p.justificativa ? `<div style="margin-top:20px; background:var(--surface2); border-radius:10px; padding:14px"><div style="font-size:11px; color:var(--muted); margin-bottom:6px">JUSTIFICATIVA</div><div style="font-size:13px">${p.justificativa}</div></div>` : ''}
     ${getObsPublica(p) ? `<div style="margin-top:12px; background:var(--surface2); border-radius:10px; padding:14px"><div style="font-size:11px; color:var(--muted); margin-bottom:6px">OBSERVAÇÕES</div><div style="font-size:13px">${getObsPublica(p)}</div></div>` : ''}
 
-    ${(p.valorCotacao || p.valorPago || p.valorRef) ? '<div style="margin-top:16px;background:rgba(0,169,157,0.06);border:1px solid rgba(0,169,157,0.2);border-radius:12px;padding:16px"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px">💰 Resumo Financeiro</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px">' + (p.valorRef?'<div style="text-align:center"><div style="font-size:11px;color:var(--muted)">Referência</div><div style="font-size:15px;font-weight:600;color:#60a5fa">R$ '+Number(p.valorRef).toLocaleString("pt-BR",{minimumFractionDigits:2})+'</div></div>':'')+(p.valorCotacao?'<div style="text-align:center"><div style="font-size:11px;color:var(--muted)">1ª Cotação</div><div style="font-size:15px;font-weight:600;color:#f59e0b">R$ '+Number(p.valorCotacao).toLocaleString("pt-BR",{minimumFractionDigits:2})+'</div></div>':'')+(p.valorPago?'<div style="text-align:center"><div style="font-size:11px;color:var(--muted)">Valor Pago</div><div style="font-size:15px;font-weight:600;color:#34d399">R$ '+Number(p.valorPago).toLocaleString("pt-BR",{minimumFractionDigits:2})+'</div></div>':'')+(p.saving?'<div style="text-align:center"><div style="font-size:11px;color:var(--muted)">Saving</div><div style="font-size:15px;font-weight:700;color:#34d399">R$ '+Number(p.saving).toLocaleString("pt-BR",{minimumFractionDigits:2})+(p.valorCotacao?'<div style="font-size:11px;font-weight:400">'+( p.saving/p.valorCotacao*100).toFixed(1)+'%</div>':'')+'</div></div>':'')+'</div></div>' : ''}
+    ${(p.valorCotacao || p.valorPago || p.valorRef) ? '<div style="margin-top:16px;background:rgba(0,169,157,0.06);border:1px solid rgba(0,169,157,0.2);border-radius:12px;padding:16px"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px">💰 Resumo Financeiro</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px">' + (p.valorRef?'<div style="text-align:center"><div style="font-size:11px;color:var(--muted)">Referência</div><div style="font-size:15px;font-weight:600;color:#60a5fa">R$ '+Number(p.valorRef).toLocaleString("pt-BR",{minimumFractionDigits:2})+'</div></div>':'')+(p.valorCotacao?'<div style="text-align:center"><div style="font-size:11px;color:var(--muted)">1ª Cotação</div><div style="font-size:15px;font-weight:600;color:#f59e0b">R$ '+Number(p.valorCotacao).toLocaleString("pt-BR",{minimumFractionDigits:2})+'</div></div>':'')+(p.valorPago?'<div style="text-align:center"><div style="font-size:11px;color:var(--muted)">Valor Pago</div><div style="font-size:15px;font-weight:600;color:#34d399">R$ '+Number(p.valorPago).toLocaleString("pt-BR",{minimumFractionDigits:2})+'</div></div>':'')+(p.saving?'<div style="text-align:center"><div style="font-size:11px;color:var(--muted)">Saving de Cotação</div><div style="font-size:15px;font-weight:700;color:#34d399">R$ '+Number(p.saving).toLocaleString("pt-BR",{minimumFractionDigits:2})+(p.valorCotacao?'<div style="font-size:11px;font-weight:400">'+( p.saving/p.valorCotacao*100).toFixed(1)+'%</div>':'')+'</div></div>':'')+'</div></div>' : ''}
   `;
   const p2 = pedidos.find(x => x.sc === sc);
   const canAlmox = window.almoxarifeMode && p2 && ALMOX_STATUSES.includes(p2.status);
@@ -1267,7 +1267,7 @@ function renderDashboard() {
 
   document.getElementById('kpi-grid').innerHTML = `
     <div class="kpi-card kv-exec-card kv-exec-saving">
-      <div class="kv-exec-icon">💰</div><div><div class="kpi-value">${fmtBRL(totalSaving)}</div><div class="kpi-label">Saving no período</div><div class="kpi-sub">${fmtPct(savingPct)} de economia sobre cotação</div></div>
+      <div class="kv-exec-icon">💰</div><div><div class="kpi-value">${fmtBRL(totalSaving)}</div><div class="kpi-label">Saving de Cotação no período</div><div class="kpi-sub">${fmtPct(savingPct)} de economia sobre cotação</div></div>
     </div>
     <div class="kpi-card kv-exec-card kv-exec-orders">
       <div class="kv-exec-icon">🛒</div><div><div class="kpi-value">${total}</div><div class="kpi-label">Pedidos realizados</div><div class="kpi-sub">${emAberto} em aberto</div></div>
@@ -1562,7 +1562,7 @@ function switchKPI(view) {
     compras: ['Painel de KPI','Indicadores que impulsionam melhores decisões.'],
     almox: ['KPI Almoxarifado','Indicadores operacionais do almoxarifado'],
     fornecedores: ['Indicadores — Fornecedores','Desempenho comercial, operacional e qualitativo dos fornecedores.'],
-    saving: ['KPI de Saving','Consolidação de saving por pedido, fornecedor, comprador e período.'],
+    saving: ['KPI de Saving de Cotação','Consolidação do saving de cotação por pedido, fornecedor, comprador e período.'],
     frete: ['KPI de Frete Nacional','Custos de frete, CIF/FOB e oportunidades de consolidação.']
   };
   const painelTitle = document.getElementById('painel-title');
@@ -1865,7 +1865,7 @@ function openSavingModal(tipo) {
   pedidosComSaving.sort((a,b) => (tipo === 'cotacao' ? b.saving - a.saving : b.savingRef - a.savingRef));
 
   const totalS = pedidosComSaving.reduce((s,p) => s + (tipo === 'cotacao' ? p.saving : p.savingRef), 0);
-  const titulo = tipo === 'cotacao' ? 'Saving: Cotação → Pago' : 'Saving: Referência → Pago';
+  const titulo = tipo === 'cotacao' ? 'Saving de Cotação: Cotação → Pago' : 'Saving de Referência: Referência → Pago';
   const cor = tipo === 'cotacao' ? '#34d399' : '#60a5fa';
 
   const rows = pedidosComSaving.map(p => {
@@ -1888,7 +1888,7 @@ function openSavingModal(tipo) {
     <div class="modal-header">
       <div>
         <div style="font-family:'Inter',sans-serif;font-size:20px;font-weight:700">📉 ${titulo}</div>
-        <div style="color:var(--muted);font-size:13px;margin-top:4px">${pedidosComSaving.length} pedido${pedidosComSaving.length !== 1 ? 's' : ''} com saving registrado</div>
+        <div style="color:var(--muted);font-size:13px;margin-top:4px">${pedidosComSaving.length} pedido${pedidosComSaving.length !== 1 ? 's' : ''} com Saving de Cotação registrado</div>
       </div>
       <button class="modal-close" onclick="closeModal()">✕</button>
     </div>
@@ -1899,7 +1899,7 @@ function openSavingModal(tipo) {
         <div style="font-size:24px;font-weight:700;font-family:'Inter',sans-serif;color:${cor}">${fmtBRL(totalS)}</div>
       </div>
       <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center">
-        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">Pedidos com Saving</div>
+        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">Pedidos com Saving de Cotação</div>
         <div style="font-size:24px;font-weight:700;font-family:'Inter',sans-serif;color:var(--text)">${pedidosComSaving.length}</div>
       </div>
     </div>
@@ -1914,7 +1914,7 @@ function openSavingModal(tipo) {
             <th style="padding:8px 12px;text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.8px">Depto.</th>
             <th style="padding:8px 12px;text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.8px">${tipo === 'cotacao' ? '1ª Cotação' : 'Referência'}</th>
             <th style="padding:8px 12px;text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.8px">Valor Pago</th>
-            <th style="padding:8px 12px;text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.8px">Saving</th>
+            <th style="padding:8px 12px;text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.8px">Saving de Cotação</th>
             <th style="padding:8px 12px;text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.8px">%</th>
           </tr>
         </thead>
@@ -1975,7 +1975,7 @@ function renderHistoricoFinalizadas() {
     '<table style="width:100%;font-size:13px;border-collapse:collapse">'
     + '<thead><tr>'
     + '<th>SC</th><th>Empresa</th><th>Item</th><th>Depto.</th>'
-    + '<th>Fornecedor</th><th>Valor Pago</th><th>Saving</th>'
+    + '<th>Fornecedor</th><th>Valor Pago</th><th>Saving de Cotação</th>'
     + '<th>Finalizado em</th><th>Próxima Compra</th>'
     + '</tr></thead>'
     + '<tbody>' + rows + '</tbody>'
@@ -4050,10 +4050,10 @@ function buildSavingPorItemEditor(p, modo) {
     + '<button type="button" class="btn btn-secondary" style="padding:7px 12px;font-size:12px" onclick="limparSavingPorItemInputs()">Limpar valores por item</button>'
     + '</div>'
     + '<div class="data-table-wrap"><table style="width:100%;font-size:13px"><thead><tr>'
-    + '<th>Item</th><th>Fornecedor cotado</th><th>Valor cotado</th><th>Fornecedor comprado</th><th>Valor comprado</th><th>Observação</th><th>Saving</th>'
+    + '<th>Item</th><th>Fornecedor cotado</th><th>Valor cotado</th><th>Fornecedor comprado</th><th>Valor comprado</th><th>Observação</th><th>Saving de Cotação</th>'
     + '</tr></thead><tbody>'+rows+'</tbody></table></div>'
     + '<div class="saving-scroll-control"><span>↔ Deslize para ver os demais campos</span><input class="saving-scroll-range" type="range" min="0" max="1000" value="0" oninput="scrollSavingItemTable(this.value)"></div>'
-    + '<div style="font-size:12px;color:var(--muted);margin-top:10px">O KPI de Saving usará a soma dos itens quando houver qualquer valor preenchido por item.</div>'
+    + '<div style="font-size:12px;color:var(--muted);margin-top:10px">O KPI de Saving de Cotação usará a soma dos itens quando houver qualquer valor preenchido por item.</div>'
     + '</div>';
 }
 
@@ -4126,7 +4126,7 @@ function buildResumoSavingPorItem(p) {
     + '<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">💰 Saving por item</div>'
     + '<div style="font-size:13px"><strong>Cotado:</strong> '+fmtBRL(p.valorCotacao)+' · <strong>Comprado:</strong> '+fmtBRL(p.valorPago)+' · <strong style="color:#059669">Saving: '+fmtBRL(p.saving)+'</strong></div>'
     + '</div>'
-    + '<div class="data-table-wrap"><table style="width:100%;font-size:13px"><thead><tr><th>Item</th><th>Fornecedor cotado</th><th>Valor cotado</th><th>Fornecedor comprado</th><th>Valor comprado</th><th>Saving</th><th>Observação</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
+    + '<div class="data-table-wrap"><table style="width:100%;font-size:13px"><thead><tr><th>Item</th><th>Fornecedor cotado</th><th>Valor cotado</th><th>Fornecedor comprado</th><th>Valor comprado</th><th>Saving de Cotação</th><th>Observação</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
     + '</div>';
 }
 
@@ -4181,7 +4181,7 @@ function getLinhasSavingDetalhado(tipo) {
 function openSavingModal(tipo) {
   const linhas = getLinhasSavingDetalhado(tipo);
   const totalS = linhas.reduce((s,l) => s + l.saving, 0);
-  const titulo = tipo === 'cotacao' ? 'Saving: Cotação → Pago' : 'Saving: Referência → Pago';
+  const titulo = tipo === 'cotacao' ? 'Saving de Cotação: Cotação → Pago' : 'Saving de Referência: Referência → Pago';
   const cor = tipo === 'cotacao' ? '#34d399' : '#60a5fa';
 
   const rows = linhas.map(l => {
@@ -4202,7 +4202,7 @@ function openSavingModal(tipo) {
     <div class="modal-header">
       <div>
         <div style="font-family:'Inter',sans-serif;font-size:20px;font-weight:700">📉 ${titulo}</div>
-        <div style="color:var(--muted);font-size:13px;margin-top:4px">${linhas.length} linha${linhas.length !== 1 ? 's' : ''} com saving registrado ${tipo === 'cotacao' ? '(pedido ou item)' : ''}</div>
+        <div style="color:var(--muted);font-size:13px;margin-top:4px">${linhas.length} linha${linhas.length !== 1 ? 's' : ''} com Saving de Cotação registrado ${tipo === 'cotacao' ? '(pedido ou item)' : ''}</div>
       </div>
       <button class="modal-close" onclick="closeModal()">✕</button>
     </div>
@@ -4218,7 +4218,7 @@ function openSavingModal(tipo) {
     </div>
     <div style="overflow-x:auto">
       <table style="width:100%;font-size:13px;border-collapse:collapse">
-        <thead><tr><th>SC</th><th>Empresa</th><th>Item</th><th>Forn. cotado</th><th>Forn. comprado</th><th>${tipo === 'cotacao' ? 'Cotado' : 'Referência'}</th><th>Comprado</th><th>Saving</th><th>%</th></tr></thead>
+        <thead><tr><th>SC</th><th>Empresa</th><th>Item</th><th>Forn. cotado</th><th>Forn. comprado</th><th>${tipo === 'cotacao' ? 'Cotado' : 'Referência'}</th><th>Comprado</th><th>Saving de Cotação</th><th>%</th></tr></thead>
         <tbody>${rows || '<tr><td colspan="9" style="padding:20px;text-align:center;color:var(--muted)">Nenhum saving registrado ainda.</td></tr>'}</tbody>
       </table>
     </div>
@@ -4339,7 +4339,7 @@ function openSavingModal(tipo) {
 
     const header = isCotacao
       ? '<th>Item</th><th>Fornecedor cotado</th><th>Valor cotado</th><th>Observação da cotação</th>'
-      : '<th>Item</th><th>Fornecedor cotado</th><th>Valor cotado</th><th>Fornecedor comprado</th><th>Valor comprado</th><th>Observação</th><th>Saving</th>';
+      : '<th>Item</th><th>Fornecedor cotado</th><th>Valor cotado</th><th>Fornecedor comprado</th><th>Valor comprado</th><th>Observação</th><th>Saving de Cotação</th>';
 
     return '<div id="v117-saving-status" style="background:rgba(0,169,157,0.06);border:1px solid rgba(0,169,157,0.22);border-radius:12px;padding:16px;margin-bottom:14px">'
       + '<div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;margin-bottom:10px">'
@@ -5807,10 +5807,10 @@ function kvRenderFornecedoresDashboard(rows){
     <div class="kpi-card"><div class="kpi-label">Fornecedores</div><div class="kpi-value">${totalFornecedores}</div><div class="kpi-sub">com histórico de compras</div></div>
     <div class="kpi-card"><div class="kpi-label">Pedidos</div><div class="kpi-value">${totalPedidos}</div><div class="kpi-sub">pedidos com fornecedor</div></div>
     <div class="kpi-card"><div class="kpi-label">Valor comprado</div><div class="kpi-value" style="font-size:22px">${kvMoney(valor)}</div><div class="kpi-sub">base registrada</div></div>
-    <div class="kpi-card"><div class="kpi-label">Saving</div><div class="kpi-value" style="font-size:22px">${kvMoney(saving)}</div><div class="kpi-sub">saving registrado</div></div>
+    <div class="kpi-card"><div class="kpi-label">Saving de Cotação</div><div class="kpi-value" style="font-size:22px">${kvMoney(saving)}</div><div class="kpi-sub">saving de cotação registrado</div></div>
     <div class="kpi-card"><div class="kpi-label">Pontualidade</div><div class="kpi-value">${pct===null?'—':kvNum(pct,1)+'%'}</div><div class="kpi-sub">${mens} entrega${mens===1?'':'s'} mensurável${mens===1?'':'is'}</div></div>`;
   if(!rows.length){table.innerHTML='<div class="empty-state"><div class="icon">🏢</div><h3>Sem dados de fornecedores</h3><p>Os indicadores aparecerão quando houver pedidos com fornecedor escolhido.</p></div>';return;}
-  table.innerHTML=`<table class="kv-forn-table"><thead><tr><th>Fornecedor</th><th>Avaliações</th><th>Compras</th><th>Valor comprado</th><th>Ticket médio</th><th>Saving</th><th>Pontualidade</th><th>Atraso médio</th><th>Parciais</th><th>Atendimento</th><th>Qualidade</th><th>Flexibilidade</th></tr></thead><tbody>${rows.map(r=>{
+  table.innerHTML=`<table class="kv-forn-table"><thead><tr><th>Fornecedor</th><th>Avaliações</th><th>Compras</th><th>Valor comprado</th><th>Ticket médio</th><th>Saving de Cotação</th><th>Pontualidade</th><th>Atraso médio</th><th>Parciais</th><th>Atendimento</th><th>Qualidade</th><th>Flexibilidade</th></tr></thead><tbody>${rows.map(r=>{
     const mens=Number(r.entregas_mensuraveis||0), pct=r.percentual_no_prazo;
     const av=Number(r.quantidade_avaliacoes||0);
     return `<tr><td><span class="kv-forn-name">${escapeHTML(r.fornecedor||'—')}</span></td><td><span class="kv-forn-metric">${av}</span></td><td><span class="kv-forn-metric">${Number(r.quantidade_pedidos||0)}</span></td><td>${kvMoney(r.valor_comprado)}</td><td>${kvMoney(r.ticket_medio)}</td><td>${kvMoney(r.saving_total)}</td><td><span class="${kvPrazoClass(pct)}">${pct===null?'—':kvNum(pct,1)+'%'}</span><span class="kv-forn-sub">${mens} mensurável${mens===1?'':'is'} · ${Number(r.entregas_atrasadas||0)} atraso${Number(r.entregas_atrasadas||0)===1?'':'s'}</span></td><td>${r.atraso_medio_dias===null?'—':kvNum(r.atraso_medio_dias,1)+' dias'}</td><td>${Number(r.recebimentos_parciais||0)}</td><td>${r.media_atendimento===null?'—':kvNum(r.media_atendimento,2)+'/5'}</td><td>${r.media_qualidade===null?'—':kvNum(r.media_qualidade,2)+'/5'}</td><td>${r.media_flexibilidade===null?'—':kvNum(r.media_flexibilidade,2)+'/5'}</td></tr>`;
@@ -5947,32 +5947,32 @@ function kvRenderSavingDashboard(payload){
   const pct=cotacao?total/cotacao*100:0, ticket=orders.length?total/orders.length:0;
   const grid=document.getElementById('saving-kpi-grid');
   if(grid) grid.innerHTML=`
-    <div class="kpi-card"><div class="kpi-label">Saving total</div><div class="kpi-value" style="font-size:22px">${kvMoney(total)}</div><div class="kpi-sub">economia registrada</div></div>
-    <div class="kpi-card"><div class="kpi-label">Pedidos com saving</div><div class="kpi-value">${orders.length}</div><div class="kpi-sub">pedidos que compõem o indicador</div></div>
-    <div class="kpi-card"><div class="kpi-label">Saving %</div><div class="kpi-value">${cotacao?kvNum(pct,1)+'%':'—'}</div><div class="kpi-sub">sobre a cotação registrada</div></div>
-    <div class="kpi-card"><div class="kpi-label">Saving médio</div><div class="kpi-value" style="font-size:22px">${orders.length?kvMoney(ticket):'—'}</div><div class="kpi-sub">por pedido com economia</div></div>
-    <div class="kpi-card"><div class="kpi-label">Valor comprado</div><div class="kpi-value" style="font-size:22px">${kvMoney(comprado)}</div><div class="kpi-sub">nos pedidos com saving</div></div>`;
+    <div class="kpi-card"><div class="kpi-label">Saving de Cotação total</div><div class="kpi-value" style="font-size:22px">${kvMoney(total)}</div><div class="kpi-sub">economia registrada</div></div>
+    <div class="kpi-card"><div class="kpi-label">Pedidos com Saving de Cotação</div><div class="kpi-value">${orders.length}</div><div class="kpi-sub">pedidos que compõem o indicador</div></div>
+    <div class="kpi-card"><div class="kpi-label">Saving de Cotação %</div><div class="kpi-value">${cotacao?kvNum(pct,1)+'%':'—'}</div><div class="kpi-sub">sobre a cotação registrada</div></div>
+    <div class="kpi-card"><div class="kpi-label">Saving de Cotação médio</div><div class="kpi-value" style="font-size:22px">${orders.length?kvMoney(ticket):'—'}</div><div class="kpi-sub">por pedido com economia</div></div>
+    <div class="kpi-card"><div class="kpi-label">Valor comprado</div><div class="kpi-value" style="font-size:22px">${kvMoney(comprado)}</div><div class="kpi-sub">nos pedidos com Saving de Cotação</div></div>`;
 
   const dept=Object.entries(kvSavingGroup(orders,'departamento')).sort((a,b)=>b[1].saving-a[1].saving);
-  const deptEl=document.getElementById('saving-departments'); if(deptEl)deptEl.innerHTML=kvSavingMiniBars(dept,'Ainda não há saving por departamento.');
+  const deptEl=document.getElementById('saving-departments'); if(deptEl)deptEl.innerHTML=kvSavingMiniBars(dept,'Ainda não há Saving de Cotação por departamento.');
   const supp=Object.entries(kvSavingGroup(orders,'fornecedor')).sort((a,b)=>b[1].saving-a[1].saving);
-  const suppEl=document.getElementById('saving-suppliers'); if(suppEl)suppEl.innerHTML=supp.length?`<table class="kv-forn-table kv-saving-table"><thead><tr><th>Fornecedor</th><th>Pedidos</th><th>Valor comprado</th><th>Saving</th><th>Participação</th></tr></thead><tbody>${supp.map(([n,v])=>`<tr><td><span class="kv-forn-name">${escapeHTML(n)}</span></td><td>${v.pedidos}</td><td>${kvMoney(v.valor)}</td><td><strong class="kv-saving-positive">${kvMoney(v.saving)}</strong></td><td>${total?kvNum(v.saving/total*100,1)+'%':'—'}</td></tr>`).join('')}</tbody></table>`:'<div class="kv-saving-empty">Nenhum fornecedor com saving registrado.</div>';
+  const suppEl=document.getElementById('saving-suppliers'); if(suppEl)suppEl.innerHTML=supp.length?`<table class="kv-forn-table kv-saving-table"><thead><tr><th>Fornecedor</th><th>Pedidos</th><th>Valor comprado</th><th>Saving de Cotação</th><th>Participação</th></tr></thead><tbody>${supp.map(([n,v])=>`<tr><td><span class="kv-forn-name">${escapeHTML(n)}</span></td><td>${v.pedidos}</td><td>${kvMoney(v.valor)}</td><td><strong class="kv-saving-positive">${kvMoney(v.saving)}</strong></td><td>${total?kvNum(v.saving/total*100,1)+'%':'—'}</td></tr>`).join('')}</tbody></table>`:'<div class="kv-saving-empty">Nenhum fornecedor com Saving de Cotação registrado.</div>';
 
   const months={}; orders.forEach(r=>{if(!r.data)return;const k=`${r.data.getFullYear()}-${String(r.data.getMonth()+1).padStart(2,'0')}`;if(!months[k])months[k]={saving:0,pedidos:0};months[k].saving+=r.saving;months[k].pedidos++;});
   const monthly=Object.entries(months).sort((a,b)=>a[0].localeCompare(b[0])).slice(-12).map(([k,v])=>{const [y,m]=k.split('-');return [new Date(+y,+m-1,1).toLocaleDateString('pt-BR',{month:'short',year:'2-digit'}),v]});
   const monthEl=document.getElementById('saving-monthly'); if(monthEl)monthEl.innerHTML=kvSavingMiniBars(monthly,'Ainda não há datas suficientes para a evolução mensal.');
 
-  const orderEl=document.getElementById('saving-orders'); if(orderEl)orderEl.innerHTML=orders.length?`<table class="kv-forn-table kv-saving-table"><thead><tr><th>SC</th><th>Fornecedor</th><th>Departamento</th><th>Cotação</th><th>Valor comprado</th><th>Saving</th><th>Saving %</th></tr></thead><tbody>${orders.slice().sort((a,b)=>b.saving-a.saving).map(r=>`<tr><td><strong>${escapeHTML(r.sc)}</strong></td><td>${escapeHTML(r.fornecedor)}</td><td>${escapeHTML(r.departamento)}</td><td>${r.valor_cotacao?kvMoney(r.valor_cotacao):'—'}</td><td>${r.valor_comprado?kvMoney(r.valor_comprado):'—'}</td><td><strong class="kv-saving-positive">${kvMoney(r.saving)}</strong></td><td>${r.valor_cotacao?kvNum(r.saving/r.valor_cotacao*100,1)+'%':'—'}</td></tr>`).join('')}</tbody></table>`:'<div class="empty-state"><div class="icon">💰</div><h3>Sem saving registrado</h3><p>Quando houver economia registrada nos pedidos, os indicadores aparecerão aqui.</p></div>';
+  const orderEl=document.getElementById('saving-orders'); if(orderEl)orderEl.innerHTML=orders.length?`<table class="kv-forn-table kv-saving-table"><thead><tr><th>SC</th><th>Fornecedor</th><th>Departamento</th><th>Cotação</th><th>Valor comprado</th><th>Saving de Cotação</th><th>Saving de Cotação %</th></tr></thead><tbody>${orders.slice().sort((a,b)=>b.saving-a.saving).map(r=>`<tr><td><strong>${escapeHTML(r.sc)}</strong></td><td>${escapeHTML(r.fornecedor)}</td><td>${escapeHTML(r.departamento)}</td><td>${r.valor_cotacao?kvMoney(r.valor_cotacao):'—'}</td><td>${r.valor_comprado?kvMoney(r.valor_comprado):'—'}</td><td><strong class="kv-saving-positive">${kvMoney(r.saving)}</strong></td><td>${r.valor_cotacao?kvNum(r.saving/r.valor_cotacao*100,1)+'%':'—'}</td></tr>`).join('')}</tbody></table>`:'<div class="empty-state"><div class="icon">💰</div><h3>Sem Saving de Cotação registrado</h3><p>Quando houver economia registrada nos pedidos, os indicadores aparecerão aqui.</p></div>';
 }
 async function loadDashboardSaving(){
-  const grid=document.getElementById('saving-kpi-grid'); if(grid)grid.innerHTML='<div class="kv-admin-loading" style="grid-column:1/-1">Carregando indicadores de saving...</div>';
+  const grid=document.getElementById('saving-kpi-grid'); if(grid)grid.innerHTML='<div class="kv-admin-loading" style="grid-column:1/-1">Carregando indicadores de Saving de Cotação...</div>';
   try{
     const data=await kvAdminRpc('dashboard_saving',{});
     window.kvSavingDashboard=data;
     kvRenderSavingDashboard(data);
   }catch(e){
-    if(grid)grid.innerHTML=`<div class="kv-admin-error" style="grid-column:1/-1">Não foi possível carregar o KPI de Saving.<br><small>${escapeHTML(e.message||'Erro desconhecido')}</small></div>`;
-    toast(e.message||'Erro ao carregar KPI de Saving.','error');
+    if(grid)grid.innerHTML=`<div class="kv-admin-error" style="grid-column:1/-1">Não foi possível carregar o KPI de Saving de Cotação.<br><small>${escapeHTML(e.message||'Erro desconhecido')}</small></div>`;
+    toast(e.message||'Erro ao carregar KPI de Saving de Cotação.','error');
   }
 }
 

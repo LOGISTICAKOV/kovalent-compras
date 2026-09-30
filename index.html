@@ -200,7 +200,7 @@
         <button id="btn-kpi-compras" class="kpi-tab-btn active" onclick="switchKPI('compras')">📊 KPI Compras</button>
         <button id="btn-kpi-almox" class="kpi-tab-btn" onclick="switchKPI('almox')">📦 KPI Almoxarifado</button>
         <button id="btn-kpi-fornecedores" class="kpi-tab-btn" onclick="switchKPI('fornecedores')">🏢 Fornecedores</button>
-        <button id="btn-kpi-saving" class="kpi-tab-btn" onclick="switchKPI('saving')">💰 Saving</button>
+        <button id="btn-kpi-saving" class="kpi-tab-btn" onclick="switchKPI('saving')">💰 Saving de Cotação</button>
         <button id="btn-kpi-frete" class="kpi-tab-btn" onclick="switchKPI('frete')">🚚 Frete Nacional</button>
       </div>
     </section>
@@ -212,7 +212,7 @@
         <div>
           <div class="kv-kpi-eyebrow">Visão executiva</div>
           <h2>Performance de Compras</h2>
-          <p>Acompanhe volume, saving, prazo e eficiência operacional em uma única visão.</p>
+          <p>Acompanhe volume, saving de cotação, prazo e eficiência operacional em uma única visão.</p>
         </div>
         <div class="kv-kpi-period-controls" aria-label="Período dos indicadores de compras">
           <label for="kpi-period-mode">Período</label>
@@ -250,7 +250,7 @@
 
       <div class="kv-kpi-dashboard-grid kv-kpi-dashboard-secondary">
         <div class="card">
-          <div class="card-title"><span>🏆</span><div>Saving por Departamento<small>Comparativo entre cotação e valor pago.</small></div></div>
+          <div class="card-title"><span>🏆</span><div>Saving de Cotação por Departamento<small>Comparativo entre cotação e valor pago.</small></div></div>
           <div id="saving-depto"></div>
         </div>
         <div class="card">
@@ -307,7 +307,7 @@
     <!-- KPI / DASHBOARD DE FORNECEDORES -->
     <div id="kpi-pane-fornecedores" style="display:none">
       <div class="kv-kpi-topline">
-        <div><div class="kv-kpi-eyebrow">Desempenho de fornecedores</div><h2>Fornecedores</h2><p>Volume comprado, saving, pontualidade e avaliação qualitativa em uma única visão.</p></div>
+        <div><div class="kv-kpi-eyebrow">Desempenho de fornecedores</div><h2>Fornecedores</h2><p>Volume comprado, saving de cotação, pontualidade e avaliação qualitativa em uma única visão.</p></div>
         <button class="btn btn-primary" onclick="openAvaliacaoFornecedor()">⭐ Avaliar fornecedor</button>
       </div>
       <div class="kpi-grid kv-kpi-primary" id="forn-kpi-grid"></div>
@@ -320,23 +320,23 @@
 
     <div id="kpi-pane-saving" style="display:none">
       <div class="kv-saving-head">
-        <div><div class="section-eyebrow">ECONOMIA EM COMPRAS</div><h2>Saving</h2><p>Economia consolidada por pedido, fornecedor, departamento e período.</p></div>
+        <div><div class="section-eyebrow">ECONOMIA EM COMPRAS</div><h2>Saving de Cotação</h2><p>Economia consolidada por pedido, fornecedor, departamento e período.</p></div>
         <button class="btn btn-secondary" onclick="loadDashboardSaving()">🔄 Atualizar</button>
       </div>
       <div id="saving-kpi-grid" class="kv-summary-grid kv-summary-grid-5"></div>
       <div class="kv-saving-layout">
-        <div class="card kv-saving-card"><div class="kv-saving-card-title"><div><strong>📅 Evolução mensal</strong><small>Saving registrado ao longo do tempo</small></div></div><div id="saving-monthly"></div></div>
-        <div class="card kv-saving-card"><div class="kv-saving-card-title"><div><strong>🏢 Saving por departamento</strong><small>Onde a economia foi gerada</small></div></div><div id="saving-departments"></div></div>
+        <div class="card kv-saving-card"><div class="kv-saving-card-title"><div><strong>📅 Evolução mensal</strong><small>Saving de cotação registrado ao longo do tempo</small></div></div><div id="saving-monthly"></div></div>
+        <div class="card kv-saving-card"><div class="kv-saving-card-title"><div><strong>🏢 Saving de Cotação por departamento</strong><small>Onde a economia foi gerada</small></div></div><div id="saving-departments"></div></div>
       </div>
       <div class="card kv-saving-card">
-        <div class="kv-saving-card-title"><div><strong>🏪 Saving por fornecedor</strong><small>Consolidação dos fornecedores com economia registrada</small></div></div>
+        <div class="kv-saving-card-title"><div><strong>🏪 Saving de Cotação por fornecedor</strong><small>Consolidação dos fornecedores com economia registrada</small></div></div>
         <div class="data-table-wrap" id="saving-suppliers"></div>
       </div>
       <div class="card kv-saving-card">
-        <div class="kv-saving-card-title"><div><strong>🧾 Pedidos com saving</strong><small>Rastreabilidade dos valores que compõem o indicador</small></div></div>
+        <div class="kv-saving-card-title"><div><strong>🧾 Pedidos com Saving de Cotação</strong><small>Rastreabilidade dos valores que compõem o indicador</small></div></div>
         <div class="data-table-wrap" id="saving-orders"></div>
       </div>
-      <div class="kv-forn-note">ℹ️ O painel considera o saving registrado no pedido e, quando disponível, o saving calculado por item. O indicador é consolidado para a operação, sem ranking por comprador.</div>
+      <div class="kv-forn-note">ℹ️ O painel considera o Saving de Cotação registrado no pedido e, quando disponível, o Saving de Cotação calculado por item. O indicador é consolidado para a operação, sem ranking por comprador.</div>
     </div>
 
     <div id="kpi-pane-frete" style="display:none">
@@ -723,7 +723,7 @@
   </div>
 </div>
 
-<script src="js/app.js?v=1.2.37"></script>
+<script src="js/app.js?v=1.2.38"></script>
 
 <div class="modal-overlay" id="modal-avaliacao-fornecedor" style="display:none">
   <div class="modal kv-forn-modal">
