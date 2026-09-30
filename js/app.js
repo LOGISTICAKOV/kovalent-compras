@@ -3140,7 +3140,7 @@ function openModal(sc) {
       + '<td style="padding:8px">'+escapeHTML(item.ref||'—')+'</td>'
       + '<td style="padding:8px">'+statusItemBadge(status)+'</td>'
       + '<td style="padding:8px;min-width:130px">'+buildItemRecebimentoResumo(item)+'</td>'
-      + '<td style="padding:8px">'+recBtn+'</td>'
+      + '<td style="padding:8px"><div style="display:flex;gap:6px;flex-wrap:wrap">'+recBtn+((window.kvAccessRole==='admin'||window.kvAccessRole==='comprador'||window.compradorMode)?'<button class="btn btn-secondary" style="padding:6px 10px;font-size:12px" onclick="openComparativoCotacoes(\''+p.sc+'\','+idx+')">⚖️ Cotações</button>':'')+'</div></td>'
       + '</tr>';
   }).join('');
 
@@ -3167,7 +3167,7 @@ function openModal(sc) {
     <div class="data-table-wrap" style="margin-bottom:18px">
       <table style="width:100%; font-size:13px">
         <thead><tr style="border-bottom:1px solid var(--border)">
-          <th>Descrição</th><th>Qtd.</th><th>Recebido</th><th>Saldo</th><th>Un.</th><th>Ref.</th><th>Status Item</th><th>NF(s)</th><th></th>
+          <th>Descrição</th><th>Qtd.</th><th>Recebido</th><th>Saldo</th><th>Un.</th><th>Ref.</th><th>Status Item</th><th>NF(s)</th><th>Ações</th>
         </tr></thead>
         <tbody>${itensHtml}</tbody>
       </table>
@@ -6192,3 +6192,69 @@ async function excluirAnexoPedido(sc,id,caminhoEncoded,nomeEncoded){
     return result;
   };
 })();
+
+
+// =========================================================
+// v1.2.39 — COMPARATIVO DE COTAÇÕES POR ITEM
+// =========================================================
+function kvCotCanManage(){ return window.kvAccessRole==='admin'||window.kvAccessRole==='comprador'||window.compradorMode; }
+function kvCotMoney(v){ return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
+function kvCotErr(d,fallback){ return d?.message||d?.details||d?.hint||fallback; }
+async function kvCotJson(url,opts={}){
+  const res=await fetch(url,{...opts,headers:{...kvApiHeaders(opts.prefer),...(opts.headers||{})}});
+  if(!res.ok){let d={};try{d=await res.json()}catch(e){}throw new Error(kvCotErr(d,'Erro ao acessar o comparativo.'));}
+  if(res.status===204)return null; const t=await res.text(); return t?JSON.parse(t):null;
+}
+async function kvCotLoad(pedidoId,itemIndex){
+  const [dec,cots]=await Promise.all([
+    kvCotJson(SUPA_URL+'/rest/v1/decisoes_cotacao_itens?pedido_id=eq.'+encodeURIComponent(pedidoId)+'&item_index=eq.'+itemIndex+'&select=*'),
+    kvCotJson(SUPA_URL+'/rest/v1/cotacoes_itens?pedido_id=eq.'+encodeURIComponent(pedidoId)+'&item_index=eq.'+itemIndex+'&select=*&order=created_at.asc')
+  ]);
+  return {decisao:dec?.[0]||null,cotacoes:cots||[]};
+}
+function kvCotModalidadeLabel(v){return v==='COMPARACAO'?'Comparação realizada':v==='FORNECEDOR_UNICO'?'Fornecedor único':v==='DISPENSA'?'Dispensa de comparação':'Não definida';}
+async function openComparativoCotacoes(sc,itemIndex){
+  const p=pedidos.find(x=>x.sc===sc), item=p?.itens?.[itemIndex];
+  if(!p||!p.id||!item){toast('Não foi possível identificar o item para o comparativo.','error');return;}
+  if(!kvCotCanManage()){toast('Seu perfil possui apenas visualização do comparativo.','error');return;}
+  window.kvCotAtivo={sc,pedidoId:p.id,itemIndex};
+  document.getElementById('modal-content').innerHTML=`<div class="modal-header"><div><div style="font-family:Inter,sans-serif;font-size:20px;font-weight:700">⚖️ Comparativo de Cotações</div><div style="font-size:13px;color:var(--muted);margin-top:4px">${escapeHTML(sc)} · ${escapeHTML(item.descricao||'Item')} · Qtd. ${escapeHTML(String(item.qtd||'—'))} ${escapeHTML(item.unidade||'')}</div></div><button class="modal-close" onclick="openModal('${sc}')">✕</button></div><div id="kv-cot-body"><div class="kv-admin-loading">Carregando comparativo...</div></div>`;
+  document.getElementById('modal-overlay').classList.add('open'); await renderComparativoCotacoes();
+}
+async function renderComparativoCotacoes(){
+  const a=window.kvCotAtivo, box=document.getElementById('kv-cot-body'); if(!a||!box)return;
+  try{
+    const {decisao,cotacoes}=await kvCotLoad(a.pedidoId,a.itemIndex); window.kvCotDados={decisao,cotacoes};
+    const menor=cotacoes.length?Math.min(...cotacoes.map(c=>Number(c.preco_unitario||0)*Number(c.quantidade||0)+Number(c.frete||0))):null;
+    const rows=cotacoes.map(c=>{const total=Number(c.preco_unitario||0)*Number(c.quantidade||0)+Number(c.frete||0), min=menor!==null&&Math.abs(total-menor)<0.005;return `<tr><td><strong>${escapeHTML(c.fornecedor)}</strong>${c.selecionado?' <span style="color:#059669;font-weight:700">★ Escolhido</span>':''}${min?' <span style="font-size:11px;color:#059669">Menor custo</span>':''}</td><td>${kvCotMoney(c.preco_unitario)}</td><td>${Number(c.quantidade||0).toLocaleString('pt-BR')}</td><td>${kvCotMoney(c.frete)}</td><td><strong>${kvCotMoney(total)}</strong></td><td>${c.prazo_entrega_dias==null?'—':c.prazo_entrega_dias+' dia(s)'}</td><td>${escapeHTML(c.condicao_pagamento||'—')}</td><td>${escapeHTML(c.justificativa_escolha||c.observacao||'—')}</td><td><div style="display:flex;gap:5px;flex-wrap:wrap"><button class="btn btn-secondary" style="padding:5px 8px;font-size:11px" onclick="kvCotEditar('${c.id}')">Editar</button><button class="btn btn-secondary" style="padding:5px 8px;font-size:11px" onclick="kvCotSelecionar('${c.id}')">${c.selecionado?'Selecionado':'Escolher'}</button><button class="btn btn-danger" style="padding:5px 8px;font-size:11px" onclick="kvCotExcluir('${c.id}')">Excluir</button></div></td></tr>`}).join('');
+    box.innerHTML=`
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:15px;margin-bottom:14px"><div style="display:grid;grid-template-columns:minmax(220px,1fr) 2fr;gap:12px"><div class="form-group"><label>Modalidade *</label><select id="kv-cot-modalidade" onchange="kvCotToggleJust()"><option value="">Selecione</option><option value="COMPARACAO" ${decisao?.modalidade==='COMPARACAO'?'selected':''}>Comparação realizada</option><option value="FORNECEDOR_UNICO" ${decisao?.modalidade==='FORNECEDOR_UNICO'?'selected':''}>Fornecedor único</option><option value="DISPENSA" ${decisao?.modalidade==='DISPENSA'?'selected':''}>Dispensa de comparação</option></select></div><div class="form-group"><label>Justificativa da modalidade <span id="kv-cot-just-req"></span></label><input id="kv-cot-just" value="${escapeHTML(decisao?.justificativa||'')}" placeholder="Obrigatória para dispensa"></div></div><div style="text-align:right"><button class="btn btn-secondary" onclick="kvCotSalvarDecisao()">Salvar modalidade</button></div></div>
+      <div style="background:rgba(0,169,157,.05);border:1px solid rgba(0,169,157,.18);border-radius:12px;padding:15px;margin-bottom:14px"><div style="font-weight:700;margin-bottom:10px">➕ Proposta do fornecedor</div><input type="hidden" id="kv-cot-id"><div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:10px"><div class="form-group"><label>Fornecedor *</label><input id="kv-cot-forn"></div><div class="form-group"><label>Preço unitário *</label><input id="kv-cot-preco" type="number" min="0" step="0.01"></div><div class="form-group"><label>Quantidade *</label><input id="kv-cot-qtd" type="number" min="0.001" step="0.001" value="${escapeHTML(String(pedidos.find(p=>p.id===a.pedidoId)?.itens?.[a.itemIndex]?.qtd||1))}"></div><div class="form-group"><label>Frete</label><input id="kv-cot-frete" type="number" min="0" step="0.01" value="0"></div></div><div style="display:grid;grid-template-columns:1fr 1.4fr;gap:10px"><div class="form-group"><label>Prazo (dias)</label><input id="kv-cot-prazo" type="number" min="0" step="1"></div><div class="form-group"><label>Condição de pagamento</label><input id="kv-cot-pag" placeholder="Ex.: 28 dias"></div></div><div class="form-group"><label>Observação</label><input id="kv-cot-obs" placeholder="Detalhes da proposta"></div><div class="form-group"><label>Justificativa da escolha</label><input id="kv-cot-just-escolha" placeholder="Obrigatória se esta proposta for escolhida sem ser o menor custo"></div><div style="display:flex;justify-content:flex-end;gap:8px"><button class="btn btn-secondary" onclick="kvCotLimparForm()">Limpar</button><button class="btn btn-primary" onclick="kvCotSalvarProposta()">Salvar proposta</button></div></div>
+      <div class="data-table-wrap" style="margin-bottom:14px"><table style="width:100%;font-size:12px"><thead><tr><th>Fornecedor</th><th>Preço unit.</th><th>Qtd.</th><th>Frete</th><th>Custo total</th><th>Prazo</th><th>Pagamento</th><th>Obs./Justificativa</th><th>Ações</th></tr></thead><tbody>${rows||'<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:18px">Nenhuma proposta cadastrada.</td></tr>'}</tbody></table></div>
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><div style="font-size:12px;color:var(--muted)">${decisao?'Modalidade atual: <strong>'+escapeHTML(kvCotModalidadeLabel(decisao.modalidade))+'</strong>':'Defina a modalidade antes de concluir.'}</div><div style="display:flex;gap:8px"><button class="btn btn-secondary" onclick="openModal('${a.sc}')">Voltar</button><button class="btn btn-primary" onclick="kvCotConcluir()">✓ Concluir comparativo</button></div></div>`;
+    kvCotToggleJust();
+  }catch(e){box.innerHTML='<div class="kv-admin-error">'+escapeHTML(e.message)+'</div>';}
+}
+function kvCotToggleJust(){const m=document.getElementById('kv-cot-modalidade')?.value,r=document.getElementById('kv-cot-just-req');if(r)r.textContent=m==='DISPENSA'?'*':'';}
+async function kvCotSalvarDecisao(){
+  const a=window.kvCotAtivo,m=document.getElementById('kv-cot-modalidade')?.value,j=document.getElementById('kv-cot-just')?.value.trim()||null;if(!m){toast('Selecione a modalidade.','error');return;}if(m==='DISPENSA'&&!j){toast('Informe a justificativa da dispensa.','error');return;}
+  try{const atual=window.kvCotDados?.decisao, body={pedido_id:a.pedidoId,item_index:a.itemIndex,modalidade:m,justificativa:j,criado_por:kvGetAuthenticatedUserId()||null}; if(atual){delete body.criado_por;await kvCotJson(SUPA_URL+'/rest/v1/decisoes_cotacao_itens?id=eq.'+encodeURIComponent(atual.id),{method:'PATCH',body:JSON.stringify(body)});}else await kvCotJson(SUPA_URL+'/rest/v1/decisoes_cotacao_itens',{method:'POST',body:JSON.stringify(body)});toast('Modalidade salva.','success');await renderComparativoCotacoes();}catch(e){toast(e.message,'error');}
+}
+function kvCotLimparForm(){['kv-cot-id','kv-cot-forn','kv-cot-preco','kv-cot-prazo','kv-cot-pag','kv-cot-obs','kv-cot-just-escolha'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});const f=document.getElementById('kv-cot-frete');if(f)f.value='0';}
+function kvCotEditar(id){const c=window.kvCotDados?.cotacoes?.find(x=>x.id===id);if(!c)return;document.getElementById('kv-cot-id').value=c.id;document.getElementById('kv-cot-forn').value=c.fornecedor||'';document.getElementById('kv-cot-preco').value=c.preco_unitario??'';document.getElementById('kv-cot-qtd').value=c.quantidade??1;document.getElementById('kv-cot-frete').value=c.frete??0;document.getElementById('kv-cot-prazo').value=c.prazo_entrega_dias??'';document.getElementById('kv-cot-pag').value=c.condicao_pagamento||'';document.getElementById('kv-cot-obs').value=c.observacao||'';document.getElementById('kv-cot-just-escolha').value=c.justificativa_escolha||'';document.getElementById('kv-cot-forn').scrollIntoView({behavior:'smooth',block:'center'});}
+async function kvCotSalvarProposta(){
+  const a=window.kvCotAtivo,id=document.getElementById('kv-cot-id')?.value,forn=document.getElementById('kv-cot-forn')?.value.trim(),preco=Number(document.getElementById('kv-cot-preco')?.value),qtd=Number(document.getElementById('kv-cot-qtd')?.value),frete=Number(document.getElementById('kv-cot-frete')?.value||0),prazo=document.getElementById('kv-cot-prazo')?.value,pag=document.getElementById('kv-cot-pag')?.value.trim()||null,obs=document.getElementById('kv-cot-obs')?.value.trim()||null,just=document.getElementById('kv-cot-just-escolha')?.value.trim()||null;
+  if(!forn||!Number.isFinite(preco)||preco<0||!Number.isFinite(qtd)||qtd<=0){toast('Informe fornecedor, preço unitário e quantidade válidos.','error');return;}
+  const body={pedido_id:a.pedidoId,item_index:a.itemIndex,fornecedor:forn,preco_unitario:preco,quantidade:qtd,frete:Number.isFinite(frete)?frete:0,prazo_entrega_dias:prazo===''?null:Number(prazo),condicao_pagamento:pag,observacao:obs,justificativa_escolha:just};
+  try{if(id){delete body.pedido_id;delete body.item_index;await kvCotJson(SUPA_URL+'/rest/v1/cotacoes_itens?id=eq.'+encodeURIComponent(id),{method:'PATCH',body:JSON.stringify(body)});}else{body.criado_por=kvGetAuthenticatedUserId()||null;await kvCotJson(SUPA_URL+'/rest/v1/cotacoes_itens',{method:'POST',body:JSON.stringify(body)});}toast('Proposta salva.','success');await renderComparativoCotacoes();}catch(e){toast(e.message,'error');}
+}
+async function kvCotSelecionar(id){
+  const a=window.kvCotAtivo,cots=window.kvCotDados?.cotacoes||[],alvo=cots.find(c=>c.id===id);if(!alvo)return;
+  const menor=Math.min(...cots.map(c=>Number(c.preco_unitario)*Number(c.quantidade)+Number(c.frete||0))), total=Number(alvo.preco_unitario)*Number(alvo.quantidade)+Number(alvo.frete||0);
+  if(total>menor+0.005&&!String(alvo.justificativa_escolha||'').trim()){toast('Edite esta proposta e informe a justificativa da escolha antes de selecioná-la.','error');return;}
+  try{for(const c of cots.filter(c=>c.selecionado&&c.id!==id))await kvCotJson(SUPA_URL+'/rest/v1/cotacoes_itens?id=eq.'+encodeURIComponent(c.id),{method:'PATCH',body:JSON.stringify({selecionado:false})});await kvCotJson(SUPA_URL+'/rest/v1/cotacoes_itens?id=eq.'+encodeURIComponent(id),{method:'PATCH',body:JSON.stringify({selecionado:true})});toast('Fornecedor selecionado.','success');await renderComparativoCotacoes();}catch(e){toast(e.message,'error');}
+}
+async function kvCotExcluir(id){if(!confirm('Excluir esta proposta do comparativo?'))return;try{await kvCotJson(SUPA_URL+'/rest/v1/cotacoes_itens?id=eq.'+encodeURIComponent(id),{method:'DELETE'});toast('Proposta excluída.','success');await renderComparativoCotacoes();}catch(e){toast(e.message,'error');}}
+async function kvCotConcluir(){
+  const a=window.kvCotAtivo;if(!a)return;try{await kvCotJson(SUPA_URL+'/rest/v1/rpc/concluir_comparativo_item',{method:'POST',body:JSON.stringify({p_pedido_id:a.pedidoId,p_item_index:a.itemIndex})});toast('Comparativo concluído e item atualizado.','success');await dbLoad();renderPedidosTable();renderDashboard();openModal(a.sc);}catch(e){toast(e.message,'error');}
+}
