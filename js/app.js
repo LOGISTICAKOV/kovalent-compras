@@ -282,19 +282,18 @@ function openAtrasadosAlmoxModal() {
   const statusDateMap = {
     'Lançar NF':                      'dataLancarNF',
     'Conferência':                    'dataConferencia',
-    'Aguardando Identificação':       'dataAguardandoId',
     'Amostragem':                     'dataAmostragem',
     'Aguardando Retirada do Estoque': 'dataAguardandoRet',
   };
   const ALMOS = Object.keys(statusDateMap);
-  const PRAZO = 2;
+  const prazoStatus = status => status === 'Conferência' ? 3 : 2;
 
   const atrasados = pedidos.filter(p => {
     if (!ALMOS.includes(p.status)) return false;
     const dateField = statusDateMap[p.status];
     const entrada = p[dateField] ? new Date(p[dateField]) : (p.dataLancarNF ? new Date(p.dataLancarNF) : null);
     if (!entrada) return false;
-    return (hoje - entrada) / 86400000 > PRAZO;
+    return (hoje - entrada) / 86400000 > prazoStatus(p.status);
   }).sort((a, b) => {
     const da = new Date(a[statusDateMap[a.status]] || a.dataLancarNF || 0);
     const db = new Date(b[statusDateMap[b.status]] || b.dataLancarNF || 0);
@@ -302,8 +301,7 @@ function openAtrasadosAlmoxModal() {
   });
 
   const CORES = {
-    'Lançar NF':'#fb923c','Conferência':'#0ea5e9',
-    'Aguardando Identificação':'#a855f7','Amostragem':'#ec4899',
+    'Lançar NF':'#fb923c','Conferência':'#0ea5e9','Amostragem':'#ec4899',
     'Aguardando Retirada do Estoque':'#f59e0b'
   };
 
@@ -703,7 +701,6 @@ function openModal(sc) {
     { label:'A Caminho',                       icon:'🚚', status: stepStatus(p.status, 'A Caminho'),                            date: p.dataACaminho||'',       note: p.rastreio ? `Rastreio: ${p.rastreio}` : '' },
     { label:'Lançar NF',                       icon:'🧾', status: stepStatus(p.status, 'Lançar NF'),                            date: p.dataLancarNF||'',       note: p.docNFE ? `NF: ${p.docNFE}` : '' },
     { label:'Conferência',                     icon:'🔍', status: stepStatus(p.status, 'Conferência'),                          date: p.dataConferencia ? formatDate(p.dataConferencia) : '',    note: '' },
-    { label:'Aguardando Identificação',        icon:'🏷️', status: stepStatus(p.status, 'Aguardando Identificação'),             date: p.dataAguardandoId ? formatDate(p.dataAguardandoId) : '',   note: '' },
     { label:'Amostragem',                      icon:'🧪', status: stepStatus(p.status, 'Amostragem'),                           date: p.dataAmostragem ? formatDate(p.dataAmostragem) : '',     note: '' },
     { label:'Aguardando Retirada do Estoque',  icon:'📤', status: stepStatus(p.status, 'Aguardando Retirada do Estoque'),       date: p.dataAguardandoRet ? formatDate(p.dataAguardandoRet) : '',  note: '' },
     { label:'Finalizado',                      icon:'✅', status: stepStatus(p.status, 'Finalizado'),                           date: p.dataFinalizado||'',     note: (p.dataFinalizado && getFinalizadoPor(p)) ? `Por: ${getFinalizadoPor(p)}` : '' },
@@ -723,7 +720,7 @@ function openModal(sc) {
     </div>
   `).join('');
 
-  const showVolume   = ['Lançar NF','Conferência','Aguardando Identificação','Amostragem','Aguardando Retirada do Estoque','Finalizado'].includes(p.status);
+  const showVolume   = ['Lançar NF','Conferência','Amostragem','Aguardando Retirada do Estoque','Finalizado'].includes(p.status);
   const showAmostra  = p.status === 'Amostragem';
 
   const mkNumInput = (id, val, onblurFn, w) =>
@@ -824,11 +821,11 @@ function updateStatus(sc) {
   const p = pedidos.find(x => x.sc === sc);
   if (!p) return;
 
-  const statusList = ['Solicitado','Cotação','Pedido de Compra','Aguardando Pagamento','A Caminho','Recebimento Parcial','Lançar NF','Conferência','Aguardando Identificação','Amostragem','Aguardando Retirada do Estoque','Finalizado','Cancelado'];
+  const statusList = ['Solicitado','Cotação','Pedido de Compra','Aguardando Pagamento','A Caminho','Recebimento Parcial','Lançar NF','Conferência','Amostragem','Aguardando Retirada do Estoque','Finalizado','Cancelado'];
   const statusIcons = {
     'Solicitado':'📋','Cotação':'💬','Pedido de Compra':'📝',
     'Aguardando Pagamento':'💳','A Caminho':'🚚','Lançar NF':'🧾',
-    'Conferência':'🔍','Aguardando Identificação':'🏷️','Amostragem':'🧪',
+    'Conferência':'🔍','Amostragem':'🧪',
     'Aguardando Retirada do Estoque':'📤','Finalizado':'✅','Cancelado':'❌'
   };
 
@@ -916,15 +913,8 @@ function selectStatusOption(el, next) {
       + '</div>';
 
   } else if (next === 'Conferência') {
-    extraFields = '<div class="form-group" style="margin-bottom:14px">'
-      + '<label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">📅 Data de Conferência</label>'
-      + '<input type="date" id="us-dataconferencia" value="' + new Date().toISOString().split('T')[0] + '" style="width:100%">'
-      + '</div>';
-
-  } else if (next === 'Aguardando Identificação') {
-    extraFields = '<div class="form-group" style="margin-bottom:14px">'
-      + '<label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">🏷️ Data de Identificação do Material</label>'
-      + '<input type="date" id="us-dataidentificacao" value="' + new Date().toISOString().split('T')[0] + '" style="width:100%">'
+    extraFields = '<div style="background:rgba(14,165,233,0.08);border:1px solid rgba(14,165,233,0.2);border-radius:8px;padding:12px;margin-bottom:14px;font-size:13px">'
+      + '🔍 A data de entrada em <strong>Conferência</strong> será registrada automaticamente. O prazo desta etapa é de 3 dias.'
       + '</div>';
 
   } else if (next === 'Amostragem') {
@@ -996,7 +986,7 @@ function selectStatusOption(el, next) {
 // =========================================================
 // v1.1.3 — LIMPEZA AUTOMÁTICA AO VOLTAR STATUS
 // =========================================================
-const STATUS_FLOW_ORDER = ['Solicitado','Cotação','Pedido de Compra','Aguardando Pagamento','A Caminho','Recebimento Parcial','Lançar NF','Conferência','Aguardando Identificação','Amostragem','Aguardando Retirada do Estoque','Finalizado'];
+const STATUS_FLOW_ORDER = ['Solicitado','Cotação','Pedido de Compra','Aguardando Pagamento','A Caminho','Recebimento Parcial','Lançar NF','Conferência','Amostragem','Aguardando Retirada do Estoque','Finalizado'];
 
 function statusFlowIndex(status) {
   const idx = STATUS_FLOW_ORDER.indexOf(status);
@@ -1067,9 +1057,6 @@ function clearStageDataAfterStatus(p, nextStatus) {
     p.dataConferencia = '';
   }
 
-  if (nextIdx < idx('Aguardando Identificação')) {
-    p.dataAguardandoId = '';
-  }
 
   if (nextIdx < idx('Amostragem')) {
     p.dataAmostragem = '';
@@ -1138,10 +1125,9 @@ function confirmUpdateStatus() {
     if (recebPor) p.recebidoPor = recebPor;
 
   } else if (next === 'Conferência') {
-    p.dataConferencia = document.getElementById('us-dataconferencia')?.value || today;
-
-  } else if (next === 'Aguardando Identificação') {
-    p.dataAguardandoId = document.getElementById('us-dataidentificacao')?.value || today;
+    // O banco é a fonte oficial (trigger trg_data_conferencia_automatica).
+    // Mantém a interface sincronizada imediatamente após a mudança de status.
+    p.dataConferencia = today;
 
   } else if (next === 'Amostragem') {
     p.dataAmostragem = document.getElementById('us-dataamostragem')?.value || today;
@@ -1305,7 +1291,7 @@ function renderDashboard() {
     `;
   }
 
-  const statusColors = { 'Solicitado':'#6b7d99', 'Cotação':'#f59e0b', 'Pedido de Compra':'#4ade80', 'Aguardando Pagamento':'#c084fc', 'A Caminho':'#60a5fa', 'Recebimento Parcial':'#d97706', 'Lançar NF':'#fb923c', 'Conferência':'#0ea5e9', 'Aguardando Identificação':'#a855f7', 'Amostragem':'#ec4899', 'Aguardando Retirada do Estoque':'#f59e0b', 'Finalizado':'#34d399', 'Cancelado':'#f87171' };
+  const statusColors = { 'Solicitado':'#6b7d99', 'Cotação':'#f59e0b', 'Pedido de Compra':'#4ade80', 'Aguardando Pagamento':'#c084fc', 'A Caminho':'#60a5fa', 'Recebimento Parcial':'#d97706', 'Lançar NF':'#fb923c', 'Conferência':'#0ea5e9', 'Amostragem':'#ec4899', 'Aguardando Retirada do Estoque':'#f59e0b', 'Finalizado':'#34d399', 'Cancelado':'#f87171' };
   document.getElementById('status-bars').innerHTML = Object.entries(statusColors).map(([st,col]) => {
     const count = byStatus[st]||0;
     const pct = total ? Math.round(count/total*100) : 0;
@@ -1369,7 +1355,7 @@ function renderDashboard() {
   // render monthly chart
   setTimeout(renderComprasChart, 50);
 
-  const late = pedidosKPI.filter(p => p.status !== 'Finalizado' && p.status !== 'Cancelado' && p.status !== 'Conferência' && p.status !== 'Aguardando Identificação' && p.status !== 'Amostragem' && p.status !== 'Aguardando Retirada do Estoque' && p.necessidade && new Date(p.necessidade) < hoje);
+  const late = pedidosKPI.filter(p => p.status !== 'Finalizado' && p.status !== 'Cancelado' && p.status !== 'Conferência' && p.status !== 'Amostragem' && p.status !== 'Aguardando Retirada do Estoque' && p.necessidade && new Date(p.necessidade) < hoje);
   if (late.length === 0) {
     document.getElementById('late-table').innerHTML = '<div class="empty-state" style="padding:30px"><div class="icon">✅</div><h3>Sem atrasos!</h3></div>';
   } else {
@@ -1595,10 +1581,9 @@ function switchKPI(view) {
 
 function renderKPIAlmox() {
   const hoje = new Date();
-  const ALMOS = ['Lançar NF','Conferência','Aguardando Identificação','Amostragem','Aguardando Retirada do Estoque'];
+  const ALMOS = ['Lançar NF','Conferência','Amostragem','Aguardando Retirada do Estoque'];
   const ALMOS_CORES = {
-    'Lançar NF':'#fb923c','Conferência':'#0ea5e9',
-    'Aguardando Identificação':'#a855f7','Amostragem':'#ec4899',
+    'Lançar NF':'#fb923c','Conferência':'#0ea5e9','Amostragem':'#ec4899',
     'Aguardando Retirada do Estoque':'#f59e0b'
   };
 
@@ -1646,7 +1631,6 @@ function renderKPIAlmox() {
   const statusDateMap = {
     'Lançar NF':                       'dataLancarNF',
     'Conferência':                     'dataConferencia',
-    'Aguardando Identificação':        'dataAguardandoId',
     'Amostragem':                      'dataAmostragem',
     'Aguardando Retirada do Estoque':  'dataAguardandoRet',
   };
@@ -1725,7 +1709,6 @@ function renderKPIAlmox() {
   // Tempo médio por etapa (dias entre entrada e saída)
   const tempoMedio = {
     'Conferência':                    { field:'dataConferencia',  prev:'dataLancarNF' },
-    'Aguardando Identificação':       { field:'dataAguardandoId', prev:'dataConferencia' },
     'Amostragem':                     { field:'dataAmostragem',   prev:'dataAguardandoId' },
     'Aguardando Retirada do Estoque': { field:'dataAguardandoRet',prev:'dataAmostragem' },
   };
@@ -2170,7 +2153,7 @@ function renderPedidosTable() {
   const q = (document.getElementById('filterInput')?.value || '').trim().toLocaleLowerCase('pt-BR');
   const setor = kvSelecoesPedidos('setor'), status = kvSelecoesPedidos('status');
   const prioridade = kvSelecoesPedidos('prioridade'), empresa = kvSelecoesPedidos('empresa');
-  const statusOrder = ['Solicitado','Cotação','Pedido de Compra','Aguardando Pagamento','A Caminho','Recebimento Parcial','Recebido','Lançar NF','Conferência','Aguardando Identificação','Amostragem','Aguardando Retirada do Estoque','Finalizado','Cancelado'];
+  const statusOrder = ['Solicitado','Cotação','Pedido de Compra','Aguardando Pagamento','A Caminho','Recebimento Parcial','Recebido','Lançar NF','Conferência','Amostragem','Aguardando Retirada do Estoque','Finalizado','Cancelado'];
 
   const filtered = pedidos.filter(p =>
     (!q || [p.sc,p.solicitante,p.departamento,p.empresa,...(p.itens||[]).map(i=>i.descricao)]
@@ -2328,12 +2311,12 @@ function renderColModel() {
 // HELPERS
 // =========================================================
 function statusKey(s) {
-  const map = { 'Solicitado':'solicitado', 'Cotação':'cotacao', 'Pedido de Compra':'pedidocompra', 'Aguardando Pagamento':'aguardando', 'A Caminho':'acaminho', 'Recebimento Parcial':'recebimentoparcial', 'Lançar NF':'lancarnf', 'Conferência':'conferencia', 'Aguardando Identificação':'aguardandoid', 'Amostragem':'amostragem', 'Aguardando Retirada do Estoque':'aguardandoretirada', 'Finalizado':'finalizado', 'Cancelado':'cancelado' };
+  const map = { 'Solicitado':'solicitado', 'Cotação':'cotacao', 'Pedido de Compra':'pedidocompra', 'Aguardando Pagamento':'aguardando', 'A Caminho':'acaminho', 'Recebimento Parcial':'recebimentoparcial', 'Lançar NF':'lancarnf', 'Conferência':'conferencia', 'Amostragem':'amostragem', 'Aguardando Retirada do Estoque':'aguardandoretirada', 'Finalizado':'finalizado', 'Cancelado':'cancelado' };
   return map[s]||'solicitado';
 }
 
 function stepStatus(current, step) {
-  const order = ['Solicitado','Cotação','Pedido de Compra','Aguardando Pagamento','A Caminho','Recebimento Parcial','Lançar NF','Conferência','Aguardando Identificação','Amostragem','Aguardando Retirada do Estoque','Finalizado'];
+  const order = ['Solicitado','Cotação','Pedido de Compra','Aguardando Pagamento','A Caminho','Recebimento Parcial','Lançar NF','Conferência','Amostragem','Aguardando Retirada do Estoque','Finalizado'];
   const ci = order.indexOf(current);
   const si = order.indexOf(step);
   if (ci > si) return 'done';
@@ -2343,9 +2326,10 @@ function stepStatus(current, step) {
 
 function formatDate(d) {
   if (!d) return '—';
-  const parts = d.split('-');
-  if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
-  return d;
+  const str = String(d).trim();
+  const iso = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[3]}/${iso[2]}/${iso[1]}`;
+  return str;
 }
 
 function toast(msg, type='success') {
@@ -2825,7 +2809,7 @@ function submitLancamentoDireto() {
 // =========================================================
 window.almoxarifeMode = false;
 const ALMOXARIFE_PASSWORD = null;// v1.2.24: login legado desativado // ← altere aqui
-const ALMOX_STATUSES = ['A Caminho','Recebimento Parcial','Lançar NF','Conferência','Aguardando Identificação','Amostragem','Aguardando Retirada do Estoque','Finalizado'];
+const ALMOX_STATUSES = ['A Caminho','Recebimento Parcial','Lançar NF','Conferência','Amostragem','Aguardando Retirada do Estoque','Finalizado'];
 
 function toggleModoAlmoxarife() {
   if (!window.almoxarifeMode) {
@@ -2999,7 +2983,7 @@ function recalcPedidoRecebimento(p) {
   if (pedidoTodosItensRecebidos(p)) {
     if (['A Caminho','Recebimento Parcial'].includes(p.status)) p.status = 'Lançar NF';
   } else if (pedidoTemRecebimento(p)) {
-    if (!['Conferência','Aguardando Identificação','Amostragem','Aguardando Retirada do Estoque','Finalizado','Cancelado'].includes(p.status)) {
+    if (!['Conferência','Amostragem','Aguardando Retirada do Estoque','Finalizado','Cancelado'].includes(p.status)) {
       p.status = 'Recebimento Parcial';
     }
   }
@@ -3131,7 +3115,6 @@ function openModal(sc) {
     { label:'Recebido', icon:'📦', status: stepStatus(p.status, 'Recebimento Parcial'), date: p.dataLancarNF ? formatDate(p.dataLancarNF) : '', note: pedidoTemRecebimento(p) ? (pedidoRecebidoTotal(p) ? 'Recebimento total registrado' : 'Recebimento parcial registrado') : '' },
     { label:'Lançar NF', icon:'🧾', status: stepStatus(p.status, 'Lançar NF'), date: p.dataLancarNF||'', note: p.docNFE ? `NF(s): ${p.docNFE}` : '' },
     { label:'Conferência', icon:'🔍', status: stepStatus(p.status, 'Conferência'), date: p.dataConferencia ? formatDate(p.dataConferencia) : '', note: '' },
-    { label:'Aguardando Identificação', icon:'🏷️', status: stepStatus(p.status, 'Aguardando Identificação'), date: p.dataAguardandoId ? formatDate(p.dataAguardandoId) : '', note: '' },
     { label:'Amostragem', icon:'🧪', status: stepStatus(p.status, 'Amostragem'), date: p.dataAmostragem ? formatDate(p.dataAmostragem) : '', note: '' },
     { label:'Aguardando Retirada do Estoque', icon:'📤', status: stepStatus(p.status, 'Aguardando Retirada do Estoque'), date: p.dataAguardandoRet ? formatDate(p.dataAguardandoRet) : '', note: '' },
     { label:'Finalizado', icon:'✅', status: stepStatus(p.status, 'Finalizado'), date: p.dataFinalizado||'', note: (p.dataFinalizado && getFinalizadoPor(p)) ? `Por: ${getFinalizadoPor(p)}` : '' },
@@ -3323,12 +3306,12 @@ async function confirmRecebimento(sc) {
 }
 
 function statusKey(s) {
-  const map = { 'Solicitado':'solicitado', 'Cotação':'cotacao', 'Pedido de Compra':'pedidocompra', 'Aguardando Pagamento':'aguardando', 'A Caminho':'acaminho', 'Recebimento Parcial':'recebimentoparcial', 'Lançar NF':'lancarnf', 'Conferência':'conferencia', 'Aguardando Identificação':'aguardandoid', 'Amostragem':'amostragem', 'Aguardando Retirada do Estoque':'aguardandoretirada', 'Finalizado':'finalizado', 'Cancelado':'cancelado' };
+  const map = { 'Solicitado':'solicitado', 'Cotação':'cotacao', 'Pedido de Compra':'pedidocompra', 'Aguardando Pagamento':'aguardando', 'A Caminho':'acaminho', 'Recebimento Parcial':'recebimentoparcial', 'Lançar NF':'lancarnf', 'Conferência':'conferencia', 'Amostragem':'amostragem', 'Aguardando Retirada do Estoque':'aguardandoretirada', 'Finalizado':'finalizado', 'Cancelado':'cancelado' };
   return map[s]||'solicitado';
 }
 
 function stepStatus(current, step) {
-  const order = ['Solicitado','Cotação','Pedido de Compra','Aguardando Pagamento','A Caminho','Recebimento Parcial','Lançar NF','Conferência','Aguardando Identificação','Amostragem','Aguardando Retirada do Estoque','Finalizado'];
+  const order = ['Solicitado','Cotação','Pedido de Compra','Aguardando Pagamento','A Caminho','Recebimento Parcial','Lançar NF','Conferência','Amostragem','Aguardando Retirada do Estoque','Finalizado'];
   const ci = order.indexOf(current);
   const si = order.indexOf(step);
   if (ci > si) return 'done';
@@ -3673,12 +3656,6 @@ const STATUS_INFO_CONFIG = [
     { key:'docNFE', label:'NF(s) de Entrada', type:'text' },
     { key:'dataRecebimento', label:'Data de Recebimento', type:'date' },
     { key:'recebidoPor', label:'Recebido Por', type:'text' }
-  ]},
-  { status:'Conferência', role:'almox', fields:[
-    { key:'dataConferencia', label:'Data de Conferência', type:'date' }
-  ]},
-  { status:'Aguardando Identificação', role:'almox', fields:[
-    { key:'dataAguardandoId', label:'Data de Identificação', type:'date' }
   ]},
   { status:'Amostragem', role:'almox', fields:[
     { key:'dataAmostragem', label:'Data de Amostragem', type:'date' }
@@ -5477,11 +5454,21 @@ function kvPendenciasDoPedido(p){
   const out=[]; const hoje=kvDateOnly(new Date()); const ref=kvParseDate(kvEntregaRef(p)); const saldo=kvTemSaldoPendente(p);
   // Pendências administrativas têm precedência sobre alerta físico redundante.
   if(p.status==='Lançar NF') out.push({tipo:'NF pendente',icon:'🧾',nivel:'warn',prazo:p.dataLancarNF||'',dias:null});
-  if(p.status==='Conferência') out.push({tipo:'Conferência pendente',icon:'🔍',nivel:'warn',prazo:p.dataConferencia||'',dias:null});
+  if(p.status==='Conferência') {
+    const inicioConf = kvParseDate(p.dataConferencia);
+    const diasConf = inicioConf ? Math.max(0, kvCalendarDiffDays(inicioConf, hoje)) : 0;
+    out.push({
+      tipo: diasConf > 3 ? 'Conferência atrasada' : 'Conferência pendente',
+      icon: diasConf > 3 ? '🔴' : '🔍',
+      nivel: diasConf > 3 ? 'danger' : 'warn',
+      prazo: p.dataConferencia || '',
+      dias: diasConf
+    });
+  }
   if(p.status==='Recebimento Parcial') out.push({tipo:'Recebimento parcial',icon:'📦',nivel:'warn',prazo:kvEntregaRef(p),dias:ref?kvCalendarDiffDays(hoje,ref):null});
   if(p.status==='Cotação' && p.dataCotacao && kvBusinessDaysElapsed(p.dataCotacao,hoje)>2)
     out.push({tipo:'Cotação parada',icon:'⏳',nivel:'danger',prazo:p.dataCotacao,dias:kvBusinessDaysElapsed(p.dataCotacao,hoje)});
-  const administrativo=['Lançar NF','Conferência','Aguardando Identificação','Amostragem','Aguardando Retirada do Estoque','Finalizado','Cancelado'];
+  const administrativo=['Lançar NF','Conferência','Amostragem','Aguardando Retirada do Estoque','Finalizado','Cancelado'];
   if(saldo && ref && !administrativo.includes(p.status)){
     const diff=kvCalendarDiffDays(hoje,ref);
     if(diff<0) out.push({tipo:'Entrega atrasada',icon:'🔴',nivel:'danger',prazo:kvEntregaRef(p),dias:Math.abs(diff)});
@@ -5514,7 +5501,7 @@ function kvPendPopularFiltro(tipo,valores){
   kvPendAtualizarLegenda(tipo);
 }
 function kvFillPendenciaFilters(){
-  kvPendPopularFiltro('tipo',['Entrega atrasada','Entrega próxima','Cotação parada','NF pendente','Recebimento parcial','Conferência pendente']);
+  kvPendPopularFiltro('tipo',['Entrega atrasada','Entrega próxima','Cotação parada','NF pendente','Recebimento parcial','Conferência pendente','Conferência atrasada']);
   kvPendPopularFiltro('setor',(pedidos||[]).map(p=>p.departamento));
   kvPendPopularFiltro('status',(pedidos||[]).map(p=>p.status));
   kvPendPopularFiltro('prioridade',(pedidos||[]).map(p=>p.prioridade));
@@ -5526,7 +5513,7 @@ function renderPendencias(){
   const all=kvAllPendencias(); const q=(document.getElementById('pend-search')?.value||'').toLowerCase();
   const tipos=kvPendSelecoes('tipo'), setores=kvPendSelecoes('setor'), statuses=kvPendSelecoes('status'), prioridades=kvPendSelecoes('prioridade'), empresas=kvPendSelecoes('empresa');
   const rows=all.filter(x=>{const p=x.pedido; const hay=[p.sc,p.solicitante,p.departamento,p.empresa,p.fornecedorEsc,...(p.itens||[]).map(i=>i.descricao)].join(' ').toLowerCase(); return (!q||hay.includes(q))&&(!tipos.length||tipos.includes(x.tipo))&&(!setores.length||setores.includes(p.departamento))&&(!statuses.length||statuses.includes(p.status))&&(!prioridades.length||prioridades.includes(p.prioridade))&&(!empresas.length||empresas.includes(p.empresa));});
-  const counts={total:all.length,atraso:all.filter(x=>x.tipo==='Entrega atrasada').length,proxima:all.filter(x=>x.tipo==='Entrega próxima').length,cotacao:all.filter(x=>x.tipo==='Cotação parada').length,adm:all.filter(x=>['NF pendente','Conferência pendente','Recebimento parcial'].includes(x.tipo)).length};
+  const counts={total:all.length,atraso:all.filter(x=>x.tipo==='Entrega atrasada').length,proxima:all.filter(x=>x.tipo==='Entrega próxima').length,cotacao:all.filter(x=>x.tipo==='Cotação parada').length,adm:all.filter(x=>['NF pendente','Conferência pendente','Conferência atrasada','Recebimento parcial'].includes(x.tipo)).length};
   const k=document.getElementById('pendencias-kpis'); if(k) k.innerHTML=`
     <div class="kv-pend-kpi"><span>Pendências</span><strong>${counts.total}</strong><small>ações identificadas</small></div>
     <div class="kv-pend-kpi danger"><span>Entregas atrasadas</span><strong>${counts.atraso}</strong><small>prazo vencido</small></div>
@@ -5535,7 +5522,7 @@ function renderPendencias(){
     <div class="kv-pend-kpi"><span>Operacionais</span><strong>${counts.adm}</strong><small>NF, conferência e parcial</small></div>`;
   const t=document.getElementById('pendencias-table'); if(!t)return;
   if(!rows.length){t.innerHTML='<div class="empty-state"><div class="icon">✅</div><h3>Nenhuma pendência encontrada</h3><p>Os filtros atuais não possuem ações pendentes.</p></div>';return;}
-  t.innerHTML=`<table><thead><tr><th>Pendência</th><th>SC</th><th>Setor</th><th>Empresa</th><th>Fornecedor</th><th>Prioridade</th><th>Prazo / referência</th><th>Situação</th><th></th></tr></thead><tbody>${rows.map(x=>{const p=x.pedido; let sit='Ação necessária'; if(x.tipo==='Entrega atrasada')sit=`${x.dias} dia${x.dias===1?'':'s'} em atraso`; else if(x.tipo==='Entrega próxima')sit=x.dias===0?'Entrega prevista hoje':`Faltam ${x.dias} dia${x.dias===1?'':'s'}`; else if(x.tipo==='Cotação parada')sit=`${x.dias} dias úteis`; return `<tr><td><span class="kv-pend-badge ${x.nivel}">${x.icon} ${x.tipo}</span></td><td><strong>${p.sc||'—'}</strong></td><td>${p.departamento||'—'}</td><td>${p.empresa||'—'}</td><td>${p.fornecedorEsc||p.fornecedorSug||'—'}</td><td>${p.prioridade||'—'}</td><td>${x.prazo?formatDate(x.prazo):'—'}</td><td>${sit}</td><td><button class="btn btn-secondary" onclick="openModal('${p.sc}')">Abrir</button></td></tr>`}).join('')}</tbody></table>`;
+  t.innerHTML=`<table><thead><tr><th>Pendência</th><th>SC</th><th>Setor</th><th>Empresa</th><th>Fornecedor</th><th>Prioridade</th><th>Prazo / referência</th><th>Situação</th><th></th></tr></thead><tbody>${rows.map(x=>{const p=x.pedido; let sit='Ação necessária'; if(x.tipo==='Entrega atrasada')sit=`${x.dias} dia${x.dias===1?'':'s'} em atraso`; else if(x.tipo==='Entrega próxima')sit=x.dias===0?'Entrega prevista hoje':`Faltam ${x.dias} dia${x.dias===1?'':'s'}`; else if(x.tipo==='Cotação parada')sit=`${x.dias} dias úteis`; else if(x.tipo==='Conferência atrasada')sit=`${x.dias} dias em conferência · ação necessária`; else if(x.tipo==='Conferência pendente')sit=x.dias===0?'Entrou em conferência hoje':`${x.dias} dia${x.dias===1?'':'s'} em conferência`; return `<tr><td><span class="kv-pend-badge ${x.nivel}">${x.icon} ${x.tipo}</span></td><td><strong>${p.sc||'—'}</strong></td><td>${p.departamento||'—'}</td><td>${p.empresa||'—'}</td><td>${p.fornecedorEsc||p.fornecedorSug||'—'}</td><td>${p.prioridade||'—'}</td><td>${x.prazo?formatDate(x.prazo):'—'}</td><td>${sit}</td><td><button class="btn btn-secondary" onclick="openModal('${p.sc}')">Abrir</button></td></tr>`}).join('')}</tbody></table>`;
 }
 function kvLimparPendencias(){
   const busca=document.getElementById('pend-search');if(busca)busca.value='';
