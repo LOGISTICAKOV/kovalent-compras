@@ -4308,18 +4308,33 @@ function openSavingModal(tipo) {
   }
 
   function v117ValorCotado(item) {
-    return v117Parse(item && (item.valorCotadoItem ?? item.valorCotado ?? 0));
+    // Proposta vencedora do Comparativo (valor que servirá de base para eventual desconto posterior).
+    return v117Parse(item && (item.valorPropostaVencedoraItem ?? item.valorCotadoItem ?? item.valorCotado ?? 0));
+  }
+
+  function v117ValorReferenciaCotacao(item) {
+    // Segunda melhor proposta válida. Só existe quando houve comparação com pelo menos 2 propostas.
+    return v117Parse(item && (item.valorReferenciaCotacaoItem ?? 0));
   }
 
   function v117ValorComprado(item) {
     return v117Parse(item && (item.valorNegociadoItem ?? item.valorNegociado ?? 0));
   }
 
-  function v117Saving(item) {
-    const cotado = v117ValorCotado(item);
+  function v117SavingCotacao(item) {
+    const referencia = v117ValorReferenciaCotacao(item);
+    const vencedora = v117ValorCotado(item);
+    return referencia > 0 && vencedora > 0 ? referencia - vencedora : 0;
+  }
+
+  function v117SavingDesconto(item) {
+    const vencedora = v117ValorCotado(item);
     const comprado = v117ValorComprado(item);
-    if (!cotado && !comprado) return 0;
-    return cotado - comprado;
+    return vencedora > 0 && comprado > 0 ? vencedora - comprado : 0;
+  }
+
+  function v117Saving(item) {
+    return v117SavingCotacao(item) + v117SavingDesconto(item);
   }
 
   function v117NormalizaPedido(p) {
@@ -4332,6 +4347,8 @@ function openSavingModal(tipo) {
       if (item.valorCotadoItem === undefined && item.valorCotado !== undefined) item.valorCotadoItem = item.valorCotado;
       if (item.valorNegociadoItem === undefined && item.valorNegociado !== undefined) item.valorNegociadoItem = item.valorNegociado;
       if (item.obsNegociacao === undefined) item.obsNegociacao = '';
+      item.savingCotacaoItem = v117SavingCotacao(item);
+      item.savingDescontoItem = v117SavingDesconto(item);
       item.savingItem = v117Saving(item);
     });
     return p;
@@ -4364,18 +4381,20 @@ function openSavingModal(tipo) {
 
       return '<tr>'
         + '<td style="padding:8px;min-width:210px"><strong>' + desc + '</strong><div style="font-size:11px;color:var(--muted)">Qtd: ' + qtd + ' ' + unidade + ref + '</div></td>'
-        + '<td style="padding:8px;min-width:150px"><div style="font-weight:700">' + v117Escape(item.fornecedorCotado || '—') + '</div><div style="font-size:10px;color:var(--muted);margin-top:3px">🔒 definido no Comparativo</div></td>'
-        + '<td style="padding:8px;min-width:120px"><strong style="color:#f59e0b">' + v117FmtBRL(v117ValorCotado(item)) + '</strong><div style="font-size:10px;color:var(--muted);margin-top:3px">🔒 referência</div></td>'
+        + '<td style="padding:8px;min-width:150px"><div style="font-weight:700">' + v117Escape(item.fornecedorCotado || '—') + '</div><div style="font-size:10px;color:var(--muted);margin-top:3px">🏆 vencedora do Comparativo</div></td>'
+        + '<td style="padding:8px;min-width:120px"><strong style="color:#f59e0b">' + v117FmtBRL(v117ValorCotado(item)) + '</strong><div style="font-size:10px;color:var(--muted);margin-top:3px">🔒 proposta vencedora</div></td>'
+        + '<td style="padding:8px;min-width:120px"><strong>' + (v117ValorReferenciaCotacao(item) ? v117FmtBRL(v117ValorReferenciaCotacao(item)) : '—') + '</strong><div style="font-size:10px;color:var(--muted);margin-top:3px">2ª melhor proposta</div></td>'
         + '<td style="padding:8px"><input class="v117-forn-comprado" data-idx="' + idx + '" value="' + v117Escape(item.fornecedorComprado || '') + '" placeholder="Fornecedor comprado" style="width:170px"></td>'
         + '<td style="padding:8px"><input class="v117-valor-comprado" data-idx="' + idx + '" type="number" step="0.01" min="0" value="' + (v117ValorComprado(item) || '') + '" placeholder="0,00" style="width:115px" oninput="v117AtualizarPreviewSaving()"></td>'
         + '<td style="padding:8px"><input class="v117-obs-neg" data-idx="' + idx + '" value="' + v117Escape(item.obsNegociacao || '') + '" placeholder="Motivo / detalhe" style="width:180px"></td>'
-        + '<td style="padding:8px"><strong class="v117-saving-preview" data-idx="' + idx + '" style="color:#059669">' + v117FmtBRL(v117Saving(item)) + '</strong></td>'
+        + '<td style="padding:8px"><strong style="color:#059669">' + v117FmtBRL(v117SavingCotacao(item)) + '</strong></td>'
+        + '<td style="padding:8px"><strong class="v117-saving-preview" data-idx="' + idx + '" style="color:#059669">' + v117FmtBRL(v117SavingDesconto(item)) + '</strong></td>'
         + '</tr>';
     }).join('');
 
     const header = isCotacao
       ? '<th>Item</th><th>Fornecedor cotado</th><th>Valor cotado</th><th>Observação da cotação</th>'
-      : '<th>Item</th><th>Fornecedor cotado</th><th>Valor cotado</th><th>Fornecedor comprado</th><th>Valor comprado</th><th>Observação</th><th>Saving de Cotação</th>';
+      : '<th>Item</th><th>Fornecedor vencedor</th><th>Proposta vencedora</th><th>2ª melhor proposta</th><th>Fornecedor comprado</th><th>Valor comprado</th><th>Observação</th><th>Saving de Cotação</th><th>Saving de Desconto</th>';
 
     return '<div id="v117-saving-status" style="background:rgba(0,169,157,0.06);border:1px solid rgba(0,169,157,0.22);border-radius:12px;padding:16px;margin-bottom:14px">'
       + '<div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;margin-bottom:10px">'
@@ -4391,26 +4410,28 @@ function openSavingModal(tipo) {
   window.v117AtualizarPreviewSaving = function() {
     const sc = window._currentUpdateSC;
     const pedidoAtual = pedidos.find(x => x.sc === sc);
-    let totalCotado = (pedidoAtual?.itens || []).reduce((s, item) => s + v117ValorCotado(item), 0);
+    let totalVencedora = (pedidoAtual?.itens || []).reduce((s, item) => s + v117ValorCotado(item), 0);
+    let totalSavingCotacao = (pedidoAtual?.itens || []).reduce((s, item) => s + v117SavingCotacao(item), 0);
     let totalComprado = 0;
     document.querySelectorAll('.v117-valor-comprado').forEach(el => totalComprado += v117Parse(el.value));
 
     document.querySelectorAll('.v117-saving-preview').forEach(span => {
       const idx = parseInt(span.dataset.idx, 10);
-      const cot = v117ValorCotado(pedidoAtual?.itens?.[idx]);
+      const vencedora = v117ValorCotado(pedidoAtual?.itens?.[idx]);
       const cmp = v117Parse(document.querySelector('.v117-valor-comprado[data-idx="' + idx + '"]')?.value);
-      const sv = cot - cmp;
+      const sv = vencedora > 0 && cmp > 0 ? vencedora - cmp : 0;
       span.textContent = v117FmtBRL(sv);
       span.style.color = sv >= 0 ? '#059669' : '#dc2626';
     });
 
     const totalEl = document.getElementById('v117-saving-total');
     if (totalEl) {
-      const saving = totalCotado - totalComprado;
+      const savingDesconto = totalVencedora > 0 && totalComprado > 0 ? totalVencedora - totalComprado : 0;
+      const savingTotal = totalSavingCotacao + savingDesconto;
       if (totalComprado) {
-        totalEl.innerHTML = '<strong>Cotado:</strong> ' + v117FmtBRL(totalCotado) + ' · <strong>Comprado:</strong> ' + v117FmtBRL(totalComprado) + ' · <strong style="color:' + (saving >= 0 ? '#059669' : '#dc2626') + '">Saving: ' + v117FmtBRL(saving) + '</strong>';
+        totalEl.innerHTML = '<strong>Saving de Cotação:</strong> ' + v117FmtBRL(totalSavingCotacao) + ' · <strong>Saving de Desconto:</strong> ' + v117FmtBRL(savingDesconto) + ' · <strong style="color:' + (savingTotal >= 0 ? '#059669' : '#dc2626') + '">Saving Total: ' + v117FmtBRL(savingTotal) + '</strong>';
       } else {
-        totalEl.innerHTML = '<strong>Total cotado:</strong> ' + v117FmtBRL(totalCotado);
+        totalEl.innerHTML = '<strong>Saving de Cotação:</strong> ' + v117FmtBRL(totalSavingCotacao) + ' · <strong>Proposta vencedora:</strong> ' + v117FmtBRL(totalVencedora);
       }
     }
   };
@@ -4453,23 +4474,32 @@ function openSavingModal(tipo) {
       if (item) item.obsNegociacao = el.value.trim();
     });
 
-    let totalCotado = 0;
+    let totalVencedora = 0;
     let totalComprado = 0;
+    let totalSavingCotacao = 0;
+    let totalSavingDesconto = 0;
     p.itens.forEach(item => {
-      item.savingItem = v117Saving(item);
-      totalCotado += v117ValorCotado(item);
+      item.savingCotacaoItem = v117SavingCotacao(item);
+      item.savingDescontoItem = v117SavingDesconto(item);
+      item.savingItem = item.savingCotacaoItem + item.savingDescontoItem;
+      totalVencedora += v117ValorCotado(item);
       totalComprado += v117ValorComprado(item);
+      totalSavingCotacao += item.savingCotacaoItem;
+      totalSavingDesconto += item.savingDescontoItem;
     });
 
-    if (totalCotado > 0) p.valorCotacao = totalCotado;
+    if (totalVencedora > 0) p.valorCotacao = totalVencedora;
     if (totalComprado > 0) p.valorPago = totalComprado;
-    if (totalCotado > 0 && totalComprado > 0) p.saving = totalCotado - totalComprado;
+    // Compatibilidade: valor_saving passa a representar exclusivamente o Saving de Cotação.
+    p.saving = totalSavingCotacao;
+    p.savingDesconto = totalSavingDesconto;
+    p.savingTotal = totalSavingCotacao + totalSavingDesconto;
     if (p.valorRef && totalComprado > 0) p.savingRef = v117Parse(p.valorRef) - totalComprado;
 
     const cot = document.getElementById('us-cotacao');
     const pago = document.getElementById('us-valorpago');
     const forn = document.getElementById('us-fornecedor');
-    if (cot && totalCotado > 0) cot.value = String(totalCotado.toFixed(2));
+    if (cot && totalVencedora > 0) cot.value = String(totalVencedora.toFixed(2));
     if (pago && totalComprado > 0) pago.value = String(totalComprado.toFixed(2));
     if (forn && p.itens[0] && p.itens[0].fornecedorCotado) forn.value = p.itens[0].fornecedorCotado;
 
@@ -6309,4 +6339,30 @@ async function kvCotSelecionar(id){
 async function kvCotExcluir(id){if(!confirm('Excluir esta proposta do comparativo?'))return;try{await kvCotJson(SUPA_URL+'/rest/v1/cotacoes_itens?id=eq.'+encodeURIComponent(id),{method:'DELETE'});toast('Proposta excluída.','success');await renderComparativoCotacoes();}catch(e){toast(e.message,'error');}}
 async function kvCotConcluir(){
   const a=window.kvCotAtivo;if(!a)return;try{await kvCotJson(SUPA_URL+'/rest/v1/rpc/concluir_comparativo_item',{method:'POST',body:JSON.stringify({p_pedido_id:a.pedidoId,p_item_index:a.itemIndex})});toast('Cotação concluída e registrada no item.','success');await dbLoad();renderPedidosTable();renderDashboard();openModal(a.sc);}catch(e){toast(e.message,'error');}
+}
+
+
+// =========================================================
+// v1.2.46 — SAVING DE COTAÇÃO + SAVING DE DESCONTO
+// Regra: Saving de Cotação = 2ª melhor proposta - proposta vencedora.
+//        Saving de Desconto = proposta vencedora - valor efetivamente comprado.
+// =========================================================
+function kv146Winner(item){ return parseQtd(item?.valorPropostaVencedoraItem ?? item?.valorCotadoItem ?? item?.valorCotado ?? 0); }
+function kv146Reference(item){ return parseQtd(item?.valorReferenciaCotacaoItem ?? 0); }
+function kv146Bought(item){ return parseQtd(item?.valorNegociadoItem ?? item?.valorNegociado ?? 0); }
+function kv146SavingCotacao(item){ const r=kv146Reference(item), w=kv146Winner(item); return r>0&&w>0 ? r-w : 0; }
+function kv146SavingDesconto(item){ const w=kv146Winner(item), b=kv146Bought(item); return w>0&&b>0 ? w-b : 0; }
+function getItemValorCotado(item){ return kv146Winner(item); }
+function getItemSavingValue(item){ return kv146SavingCotacao(item); }
+function recalcPedidoFinanceiroPorItem(p){
+  if(!p||!Array.isArray(p.itens)) return p;
+  let winner=0,bought=0,quote=0,discount=0;
+  p.itens.forEach(i=>{i.savingCotacaoItem=kv146SavingCotacao(i);i.savingDescontoItem=kv146SavingDesconto(i);i.savingItem=i.savingCotacaoItem;i.savingTotalItem=i.savingCotacaoItem+i.savingDescontoItem;winner+=kv146Winner(i);bought+=kv146Bought(i);quote+=i.savingCotacaoItem;discount+=i.savingDescontoItem;});
+  if(winner>0)p.valorCotacao=winner;if(bought>0)p.valorPago=bought;p.saving=quote;p.savingDesconto=discount;p.savingTotal=quote+discount;
+  if(p.valorRef&&bought>0)p.savingRef=parseQtd(p.valorRef)-bought;return p;
+}
+function buildResumoSavingPorItem(p){
+  if(!pedidoTemFinanceiroPorItem(p))return '';recalcPedidoFinanceiroPorItem(p);
+  const rows=(p.itens||[]).filter(itemTemFinanceiro).map(i=>'<tr><td style="padding:8px">'+escapeHTML(i.descricao||'Item')+'</td><td style="padding:8px">'+(i.fornecedorCotado?escapeHTML(i.fornecedorCotado):'—')+'</td><td style="padding:8px">'+(kv146Reference(i)?fmtBRL(kv146Reference(i)):'—')+'</td><td style="padding:8px;color:#f59e0b">'+fmtBRL(kv146Winner(i))+'</td><td style="padding:8px">'+(i.fornecedorComprado?escapeHTML(i.fornecedorComprado):'—')+'</td><td style="padding:8px;color:#00a99d">'+fmtBRL(kv146Bought(i))+'</td><td style="padding:8px"><strong style="color:#059669">'+fmtBRL(kv146SavingCotacao(i))+'</strong></td><td style="padding:8px"><strong style="color:#059669">'+fmtBRL(kv146SavingDesconto(i))+'</strong></td><td style="padding:8px"><strong>'+fmtBRL(kv146SavingCotacao(i)+kv146SavingDesconto(i))+'</strong></td></tr>').join('');
+  return '<div id="resumo-saving-item" style="margin-top:18px;background:rgba(0,169,157,0.06);border:1px solid rgba(0,169,157,0.18);border-radius:12px;padding:16px"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">💰 Saving por item</div><div style="font-size:13px"><strong>Saving de Cotação:</strong> '+fmtBRL(p.saving||0)+' · <strong>Saving de Desconto:</strong> '+fmtBRL(p.savingDesconto||0)+' · <strong style="color:#059669">Saving Total: '+fmtBRL(p.savingTotal||0)+'</strong></div></div><div class="data-table-wrap"><table style="width:100%;font-size:13px"><thead><tr><th>Item</th><th>Fornecedor vencedor</th><th>2ª melhor</th><th>Proposta vencedora</th><th>Fornecedor comprado</th><th>Valor comprado</th><th>Saving de Cotação</th><th>Saving de Desconto</th><th>Saving Total</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
 }
