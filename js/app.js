@@ -4403,6 +4403,7 @@ function openSavingModal(tipo) {
       + '<div id="v117-saving-total" style="font-size:12px;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 10px">Total será calculado ao confirmar</div>'
       + '</div>'
       + '<div class="data-table-wrap"><table style="width:100%;font-size:13px"><thead><tr>' + header + '</tr></thead><tbody>' + rows + '</tbody></table></div>'
+      + '<div class="v117-scroll-control"><span>↔ Arraste para ver Fornecedor comprado, Valor comprado, Observação e Savings</span><input class="v117-scroll-range" type="range" min="0" max="1000" value="0" oninput="v117ScrollCompraTable(this.value)"></div>'
       + '<div style="font-size:12px;color:var(--muted);margin-top:10px">Os campos gerais de valor serão preenchidos automaticamente com a soma dos itens.</div>'
       + '</div>';
   }
@@ -4436,6 +4437,28 @@ function openSavingModal(tipo) {
     }
   };
 
+
+  // v1.2.47 — controle horizontal visível para Negociação / Compra por item
+  window.v117ScrollCompraTable = function(value) {
+    const wrap = document.querySelector('#v117-saving-status .data-table-wrap');
+    if (!wrap) return;
+    const max = Math.max(0, wrap.scrollWidth - wrap.clientWidth);
+    wrap.scrollLeft = max * (Number(value || 0) / 1000);
+  };
+
+  function v117BindScrollCompra() {
+    const wrap = document.querySelector('#v117-saving-status .data-table-wrap');
+    const range = document.querySelector('#v117-saving-status .v117-scroll-range');
+    if (!wrap || !range || wrap.dataset.v117ScrollBound === '1') return;
+    wrap.dataset.v117ScrollBound = '1';
+    const sync = function() {
+      const max = Math.max(0, wrap.scrollWidth - wrap.clientWidth);
+      range.value = max ? Math.round((wrap.scrollLeft / max) * 1000) : 0;
+    };
+    wrap.addEventListener('scroll', sync, {passive:true});
+    sync();
+  }
+
   function v117InjectSavingStatus(next) {
     const sc = window._currentUpdateSC;
     const p = pedidos.find(x => x.sc === sc);
@@ -4455,7 +4478,7 @@ function openSavingModal(tipo) {
 
     const html = v117BuildStatusFinanceiro(p, next);
     container.insertAdjacentHTML('afterbegin', html);
-    setTimeout(window.v117AtualizarPreviewSaving, 0);
+    setTimeout(function(){ window.v117AtualizarPreviewSaving(); v117BindScrollCompra(); }, 0);
   }
 
   function v117ApplyInputs(p) {
