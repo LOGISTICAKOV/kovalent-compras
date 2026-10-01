@@ -6,7 +6,7 @@
 <title>Kovalent · Sistema de Compras Nacionais</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<link rel="stylesheet" href="css/style.css?v=1.2.53">
+<link rel="stylesheet" href="css/style.css?v=1.2.54">
 </head>
 <body class="auth-locked">
 
@@ -202,6 +202,7 @@
         <button id="btn-kpi-fornecedores" class="kpi-tab-btn" onclick="switchKPI('fornecedores')">🏢 Fornecedores</button>
         <button id="btn-kpi-saving" class="kpi-tab-btn" onclick="switchKPI('saving')">💰 Saving de Cotação</button>
         <button id="btn-kpi-frete" class="kpi-tab-btn" onclick="switchKPI('frete')">🚚 Frete Nacional</button>
+        <button id="btn-kpi-relatorios" class="kpi-tab-btn" onclick="switchKPI('relatorios')">📑 Relatórios Gerenciais</button>
       </div>
     </section>
     <div class="kv-page-content kv-kpi-content">
@@ -352,6 +353,36 @@
       <div class="card kv-frete-card"><div class="kv-frete-card-title"><div><strong>🧭 Rotas e empresas</strong><small>Origem, destino e empresa vinculada ao frete</small></div></div><div class="data-table-wrap" id="frete-routes"></div></div>
       <div class="card kv-frete-card"><div class="kv-frete-card-title"><div><strong>🧾 Histórico de fretes</strong><small>Rastreabilidade dos lançamentos e pedidos consolidados</small></div></div><div class="data-table-wrap" id="frete-history"></div></div>
       <div class="kv-forn-note">ℹ️ Um frete pode atender vários pedidos. O custo é contabilizado uma única vez, evitando duplicidade quando houver consolidação de SCs.</div>
+    </div>
+
+    <!-- RELATÓRIOS GERENCIAIS -->
+    <div id="kpi-pane-relatorios" style="display:none">
+      <div class="kv-report-head">
+        <div><div class="section-eyebrow">GESTÃO E RASTREABILIDADE</div><h2>Relatórios Gerenciais</h2><p>Consolide compras, saving, fretes e andamento dos pedidos com filtros por período e operação.</p></div>
+        <div class="kv-report-actions"><button class="btn btn-secondary" onclick="kvExportRelatorioCSV()">⬇ CSV</button><button class="btn btn-secondary" onclick="kvExportRelatorioExcel()">📊 Excel</button><button class="btn btn-primary" onclick="kvLoadRelatorioGerencial()">🔄 Atualizar</button></div>
+      </div>
+
+      <div class="card kv-report-filters">
+        <div class="kv-report-filter-grid">
+          <div class="form-group"><label>DATA INICIAL</label><input id="rel-data-inicio" type="date"></div>
+          <div class="form-group"><label>DATA FINAL</label><input id="rel-data-fim" type="date"></div>
+          <div class="form-group"><label>EMPRESA</label><select id="rel-empresa"><option value="">Todas</option></select></div>
+          <div class="form-group"><label>DEPARTAMENTO</label><select id="rel-departamento"><option value="">Todos</option></select></div>
+          <div class="form-group"><label>STATUS</label><select id="rel-status"><option value="">Todos</option></select></div>
+          <div class="form-group"><label>PRIORIDADE</label><select id="rel-prioridade"><option value="">Todas</option><option value="URGENTE">URGENTE</option><option value="NÃO URGENTE">NÃO URGENTE</option></select></div>
+        </div>
+        <div class="kv-report-filter-actions"><button class="btn btn-secondary" onclick="kvLimparFiltrosRelatorio()">Limpar filtros</button><button class="btn btn-primary" onclick="kvLoadRelatorioGerencial()">Aplicar filtros</button></div>
+      </div>
+
+      <div id="relatorio-kpi-grid" class="kv-summary-grid kv-summary-grid-5"></div>
+      <div class="kv-report-layout">
+        <div class="card kv-report-card"><div class="kv-report-card-title"><strong>🏢 Compras por departamento</strong><small>Volume comprado e saving no período</small></div><div id="relatorio-departamentos"></div></div>
+        <div class="card kv-report-card"><div class="kv-report-card-title"><strong>📌 Pedidos por status</strong><small>Distribuição operacional dos pedidos</small></div><div id="relatorio-status"></div></div>
+      </div>
+      <div class="card kv-report-card"><div class="kv-report-card-title"><strong>🏪 Fornecedores</strong><small>Consolidação financeira por fornecedor comprado</small></div><div class="data-table-wrap" id="relatorio-fornecedores"></div></div>
+      <div class="card kv-report-card"><div class="kv-report-card-title"><strong>🧾 Detalhamento dos pedidos</strong><small>Clique na SC para abrir o pedido completo</small></div><div class="data-table-wrap" id="relatorio-pedidos"></div></div>
+      <div class="card kv-report-card"><div class="kv-report-card-title"><strong>🚚 Detalhamento dos fretes</strong><small>Custos e rotas registrados no período</small></div><div class="data-table-wrap" id="relatorio-fretes"></div></div>
+      <div class="kv-forn-note">ℹ️ O período do relatório usa a data de criação da solicitação. Fretes usam a data do frete. Os valores respeitam os filtros aplicados.</div>
     </div>
     </div><!-- /kv-page-content -->
   </div><!-- /tab-painel -->
@@ -723,7 +754,7 @@
   </div>
 </div>
 
-<script src="js/app.js?v=1.2.53"></script>
+<script src="js/app.js?v=1.2.54"></script>
 
 <div class="modal-overlay" id="modal-avaliacao-fornecedor" style="display:none">
   <div class="modal kv-forn-modal">

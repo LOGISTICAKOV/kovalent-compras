@@ -1560,7 +1560,7 @@ function renderComprasChart() {
 window._kpiView = 'compras';
 
 function switchKPI(view) {
-  const validViews = ['compras','almox','fornecedores','saving','frete'];
+  const validViews = ['compras','almox','fornecedores','saving','frete','relatorios'];
   if (!validViews.includes(view)) view = 'compras';
   window._kpiView = view;
 
@@ -1576,7 +1576,8 @@ function switchKPI(view) {
     almox: ['KPI Almoxarifado','Indicadores operacionais do almoxarifado'],
     fornecedores: ['Indicadores — Fornecedores','Desempenho comercial, operacional e qualitativo dos fornecedores.'],
     saving: ['KPI de Saving de Cotação','Consolidação do saving de cotação por pedido, fornecedor, comprador e período.'],
-    frete: ['KPI de Frete Nacional','Custos de frete, CIF/FOB e oportunidades de consolidação.']
+    frete: ['KPI de Frete Nacional','Custos de frete, CIF/FOB e oportunidades de consolidação.'],
+    relatorios: ['Relatórios Gerenciais','Compras, saving, fretes e rastreabilidade em uma visão consolidada.']
   };
   const painelTitle = document.getElementById('painel-title');
   const painelSub = document.getElementById('painel-sub');
@@ -1590,6 +1591,7 @@ function switchKPI(view) {
   if (view === 'almox') renderKPIAlmox();
   if (view === 'fornecedores') loadDashboardFornecedores();
   if (view === 'saving') loadDashboardSaving();
+  if (view === 'relatorios') kvInitRelatorioGerencial();
 }
 
 function renderKPIAlmox() {
@@ -6542,3 +6544,59 @@ async function salvarTransportadora(){
   try{const url=SUPA_URL+'/rest/v1/transportadoras'+(id?`?id=eq.${encodeURIComponent(id)}`:'');const r=await fetch(url,{method:id?'PATCH':'POST',headers:kvApiHeaders('return=representation'),body:JSON.stringify(body)});if(!r.ok){let d={};try{d=await r.json()}catch(e){}throw new Error(d.message||'Não foi possível salvar a transportadora.')}toast(id?'Transportadora atualizada.':'Transportadora cadastrada.','success');kvLimparTransportadoraForm();await carregarTransportadorasGestao();}catch(e){toast(e.message,'error')}finally{btn.disabled=false;}
 }
 async function alternarTransportadora(id,ativo){try{const r=await fetch(SUPA_URL+`/rest/v1/transportadoras?id=eq.${encodeURIComponent(id)}`,{method:'PATCH',headers:kvApiHeaders('return=minimal'),body:JSON.stringify({ativo,updated_at:new Date().toISOString()})});if(!r.ok)throw new Error('Não foi possível alterar a situação.');toast(ativo?'Transportadora ativada.':'Transportadora inativada.','success');await carregarTransportadorasGestao();}catch(e){toast(e.message,'error')}}
+
+
+// =========================================================
+// v1.2.54 — RELATÓRIOS GERENCIAIS
+// =========================================================
+window.kvRelatorioGerencial = null;
+window.kvRelatorioInicializado = false;
+
+function kvRelFmtBRL(v){ return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
+function kvRelFmtDate(v){ if(!v)return '—'; const s=String(v).slice(0,10); const p=s.split('-'); return p.length===3 ? p[2]+'/'+p[1]+'/'+p[0] : s; }
+function kvRelUnique(values){ return [...new Set(values.filter(Boolean).map(v=>String(v).trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR')); }
+function kvRelFillSelect(id, values, label){ const el=document.getElementById(id); if(!el)return; const current=el.value; el.innerHTML='<option value="">'+label+'</option>'+kvRelUnique(values).map(v=>'<option value="'+escapeHTML(v)+'">'+escapeHTML(v)+'</option>').join(''); if([...el.options].some(o=>o.value===current))el.value=current; }
+
+function kvInitRelatorioGerencial(){
+  kvRelFillSelect('rel-empresa',(pedidos||[]).map(p=>p.empresa),'Todas');
+  kvRelFillSelect('rel-departamento',(pedidos||[]).map(p=>p.departamento),'Todos');
+  kvRelFillSelect('rel-status',(pedidos||[]).map(p=>p.status),'Todos');
+  if(!window.kvRelatorioInicializado){
+    const now=new Date(), ini=document.getElementById('rel-data-inicio'), fim=document.getElementById('rel-data-fim');
+    const y=now.getFullYear(); if(ini)ini.value=y+'-01-01'; if(fim)fim.value=now.toISOString().slice(0,10);
+    window.kvRelatorioInicializado=true;
+  }
+  kvLoadRelatorioGerencial();
+}
+
+function kvRelParams(){ const val=id=>document.getElementById(id)?.value||null; return {p_data_inicio:val('rel-data-inicio'),p_data_fim:val('rel-data-fim'),p_empresa:val('rel-empresa'),p_departamento:val('rel-departamento'),p_status:val('rel-status'),p_prioridade:val('rel-prioridade')}; }
+async function kvLoadRelatorioGerencial(){
+  const box=document.getElementById('relatorio-pedidos'); if(box)box.innerHTML='<div class="kv-admin-loading">Carregando relatório...</div>';
+  try{ const data=await kvAdminRpc('relatorio_gerencial',kvRelParams()); window.kvRelatorioGerencial=data||{}; kvRenderRelatorioGerencial(data||{}); }
+  catch(e){ console.error(e); if(box)box.innerHTML='<div class="kv-admin-error">Não foi possível carregar o relatório.<br><small>'+escapeHTML(e.message)+'</small></div>'; toast(e.message||'Erro ao carregar relatório.','error'); }
+}
+function kvLimparFiltrosRelatorio(){ ['rel-empresa','rel-departamento','rel-status','rel-prioridade'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';}); const now=new Date(),ini=document.getElementById('rel-data-inicio'),fim=document.getElementById('rel-data-fim');if(ini)ini.value=now.getFullYear()+'-01-01';if(fim)fim.value=now.toISOString().slice(0,10);kvLoadRelatorioGerencial(); }
+
+function kvRelBars(rows, nameKey, valueKey, money){ rows=Array.isArray(rows)?rows:[]; if(!rows.length)return '<div class="kv-report-empty">Sem dados para os filtros selecionados.</div>'; const max=Math.max(...rows.map(r=>Number(r[valueKey]||0)),1); return '<div class="kv-report-bars">'+rows.slice(0,12).map(r=>{const n=Number(r[valueKey]||0),w=Math.max(3,n/max*100);return '<div class="kv-report-bar"><div class="kv-report-bar-head"><strong>'+escapeHTML(r[nameKey]||'Não informado')+'</strong><span>'+(money?kvRelFmtBRL(n):n)+'</span></div><div class="kv-report-track"><i style="width:'+w+'%"></i></div><small>'+(r.pedidos||0)+' pedido'+(Number(r.pedidos)===1?'':'s')+(r.saving!==undefined?' · Saving '+kvRelFmtBRL(r.saving):'')+'</small></div>';}).join('')+'</div>'; }
+
+function kvRenderRelatorioGerencial(d){
+  const r=d.resumo||{}, f=d.frete||{};
+  const k=document.getElementById('relatorio-kpi-grid'); if(k)k.innerHTML=`
+    <div class="kv-report-kpi"><span>Pedidos</span><strong>${Number(r.total_pedidos||0)}</strong><small>${Number(r.pedidos_em_aberto||0)} em aberto</small></div>
+    <div class="kv-report-kpi"><span>Valor comprado</span><strong>${kvRelFmtBRL(r.valor_comprado)}</strong><small>no período filtrado</small></div>
+    <div class="kv-report-kpi success"><span>Saving de Cotação</span><strong>${kvRelFmtBRL(r.saving_total)}</strong><small>${Number(r.saving_percentual||0).toLocaleString('pt-BR')}% de economia</small></div>
+    <div class="kv-report-kpi"><span>Finalizados</span><strong>${Number(r.pedidos_finalizados||0)}</strong><small>${Number(r.percentual_finalizados||0).toLocaleString('pt-BR')}% dos pedidos</small></div>
+    <div class="kv-report-kpi freight"><span>Frete nacional</span><strong>${kvRelFmtBRL(f.valor_total_frete)}</strong><small>${Number(f.quantidade_fretes||0)} frete${Number(f.quantidade_fretes||0)===1?'':'s'} · ticket ${kvRelFmtBRL(f.ticket_medio_frete)}</small></div>`;
+  const dep=document.getElementById('relatorio-departamentos'); if(dep)dep.innerHTML=kvRelBars(d.por_departamento,'departamento','valor_comprado',true);
+  const st=document.getElementById('relatorio-status'); if(st)st.innerHTML=kvRelBars(d.por_status,'status','pedidos',false);
+  const forn=Array.isArray(d.por_fornecedor)?d.por_fornecedor:[], fb=document.getElementById('relatorio-fornecedores');
+  if(fb)fb.innerHTML=forn.length?'<table><thead><tr><th>Fornecedor</th><th>Pedidos</th><th>Valor comprado</th><th>Saving</th></tr></thead><tbody>'+forn.map(x=>'<tr><td><strong>'+escapeHTML(x.fornecedor||'Não informado')+'</strong></td><td>'+Number(x.pedidos||0)+'</td><td>'+kvRelFmtBRL(x.valor_comprado)+'</td><td class="kv-report-saving">'+kvRelFmtBRL(x.saving)+'</td></tr>').join('')+'</tbody></table>':'<div class="kv-report-empty">Nenhum fornecedor no período.</div>';
+  const ps=Array.isArray(d.pedidos)?d.pedidos:[], pb=document.getElementById('relatorio-pedidos');
+  if(pb)pb.innerHTML=ps.length?'<table class="kv-report-table"><thead><tr><th>SC</th><th>Data</th><th>Empresa</th><th>Departamento</th><th>Status</th><th>Fornecedor</th><th>Valor comprado</th><th>Saving</th><th>PC</th></tr></thead><tbody>'+ps.map(p=>'<tr><td><button class="kv-report-sc" onclick="openModal(\''+String(p.sc||'').replace(/'/g,"\\'")+'\')">'+escapeHTML(p.sc||'—')+'</button></td><td>'+kvRelFmtDate(p.data)+'</td><td>'+escapeHTML(p.empresa||'—')+'</td><td>'+escapeHTML(p.departamento||'—')+'</td><td><span class="status-badge status-'+statusKey(p.status||'')+'">'+escapeHTML(p.status||'—')+'</span></td><td>'+escapeHTML(p.fornecedor||'—')+'</td><td>'+kvRelFmtBRL(p.valor_comprado)+'</td><td class="kv-report-saving">'+kvRelFmtBRL(p.saving)+'</td><td>'+escapeHTML(p.pedido_compra||'—')+'</td></tr>').join('')+'</tbody></table>':'<div class="kv-report-empty">Nenhum pedido encontrado.</div>';
+  const fs=Array.isArray(d.fretes)?d.fretes:[], fr=document.getElementById('relatorio-fretes');
+  if(fr)fr.innerHTML=fs.length?'<table><thead><tr><th>Data</th><th>Transportadora</th><th>Empresa</th><th>Origem</th><th>Destino</th><th>Tipo</th><th>Valor</th></tr></thead><tbody>'+fs.map(x=>'<tr><td>'+kvRelFmtDate(x.data_frete)+'</td><td><strong>'+escapeHTML(x.transportadora||'—')+'</strong></td><td>'+escapeHTML(x.empresa||'—')+'</td><td>'+escapeHTML(x.origem||'—')+'</td><td>'+escapeHTML(x.destino||'—')+'</td><td>'+escapeHTML(x.tipo_transporte||'—')+'</td><td>'+kvRelFmtBRL(x.valor_frete)+'</td></tr>').join('')+'</tbody></table>':'<div class="kv-report-empty">Nenhum frete encontrado.</div>';
+}
+
+function kvRelExportRows(){ const d=window.kvRelatorioGerencial||{}; return (Array.isArray(d.pedidos)?d.pedidos:[]).map(p=>({SC:p.sc||'',Data:kvRelFmtDate(p.data),Empresa:p.empresa||'',Solicitante:p.solicitante||'',Departamento:p.departamento||'',Prioridade:p.prioridade||'',Status:p.status||'',Fornecedor:p.fornecedor||'',Valor_Cotado:Number(p.valor_cotado||0),Valor_Comprado:Number(p.valor_comprado||0),Saving:Number(p.saving||0),Pedido_Compra:p.pedido_compra||'',Necessidade:p.necessidade||'',Previsao_Entrega:p.previsao_entrega||'',Data_Revisada_Entrega:p.data_revisada_entrega||''})); }
+function kvExportRelatorioCSV(){ const rows=kvRelExportRows(); if(!rows.length){toast('Não há pedidos para exportar.','info');return;} const keys=Object.keys(rows[0]), q=v=>'"'+String(v??'').replace(/"/g,'""')+'"'; const csv='\ufeff'+keys.map(q).join(';')+'\n'+rows.map(r=>keys.map(k=>q(r[k])).join(';')).join('\n'); const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));a.download='Kovalent_Relatorio_Gerencial_'+new Date().toISOString().slice(0,10)+'.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(a.href); }
+function kvExportRelatorioExcel(){ const rows=kvRelExportRows(); if(!rows.length){toast('Não há pedidos para exportar.','info');return;} if(typeof XLSX==='undefined'){toast('Biblioteca de Excel indisponível.','error');return;} const d=window.kvRelatorioGerencial||{}, wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows),'Pedidos'); const forn=Array.isArray(d.por_fornecedor)?d.por_fornecedor:[]; if(forn.length)XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(forn),'Fornecedores'); const deps=Array.isArray(d.por_departamento)?d.por_departamento:[]; if(deps.length)XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(deps),'Departamentos'); const fretes=Array.isArray(d.fretes)?d.fretes:[]; if(fretes.length)XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(fretes),'Fretes'); XLSX.writeFile(wb,'Kovalent_Relatorio_Gerencial_'+new Date().toISOString().slice(0,10)+'.xlsx'); }
